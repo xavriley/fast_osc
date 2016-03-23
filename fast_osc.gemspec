@@ -18,7 +18,7 @@ Gem::Specification.new do |spec|
   spec.test_files    = spec.files.grep(%r{^(test|spec|features)/})
   spec.require_paths = ["lib", "ext"]
 
-  spec.extensions << "ext/faye_websocket/extconf.rb"
+  spec.extensions << "ext/fast_osc/extconf.rb"
 
   spec.add_development_dependency "bundler", "~> 1.5"
   spec.add_development_dependency "rake"
