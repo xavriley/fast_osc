@@ -25,20 +25,23 @@ This will only work on a mac at the moment as that's what the `librtosc.a` was c
 Planned API
 
 ```
-FastOsc.serialise(["/aa", "foo", "bar"]) #=> "/aa\x00ss\x00\x00foo\x00bar\x00"
-FastOsc.deserialise("/aa\x00ss\x00\x00foo\x00bar\x00") #=> ["foo", "bar"]
+FastOsc.serialise(["/aa", "foo", "bar"]) #=> "/aa\x00,ss\x00foo\x00bar\x00"
+FastOsc.deserialise("/aa\x00,ss\x00foo\x00bar\x00") #=> ["foo", "bar"]
 ```
 
 What currently works
 
 ```
-[19:07:29] xavierriley:fast_osc git:(master*) $ ruby -r ./lib/fast_osc.bundle -e 'puts FastOsc.deserialize("/ab\x00ss\x00\x00foo\x00bar\x00").inspect'
-["foo"]
+[19:07:29] xavierriley:fast_osc git:(master*) $ ruby -r ./lib/fast_osc.bundle -e 'puts FastOsc.deserialize("/ab\x00,ss\x00foo\x00bar\x00").inspect'
+["foo", "bar"]
 ```
 
 It's a start...
 
 ## Development notes
+
+    bundle install
+    rake compile
 
 https://gist.github.com/xavriley/507eff0a75d4552fa56e
 
