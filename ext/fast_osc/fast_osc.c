@@ -28,25 +28,51 @@ void Init_fast_osc() {
   rb_define_singleton_method(FastOsc, "deserialize", method_fast_osc_deserialize, 1);
 }
 
-// The business logic -- this is the function we're exposing to Ruby. It returns
-// a Ruby VALUE, and takes three VALUE arguments: the receiver object, and the
-// method parameters. Notes on APIs used here:
-//
-// * RARRAY_LEN(VALUE) returns the length of a Ruby array object
-// * rb_ary_new2(int) creates a new Ruby array with the given length
-// * rb_ary_entry(VALUE, int) returns the nth element of a Ruby array
-// * NUM2INT converts a Ruby Fixnum object to a C int
-// * INT2NUM converts a C int to a Ruby Fixnum object
-// * rb_ary_store(VALUE, int, VALUE) sets the nth element of a Ruby array
-//
 VALUE method_fast_osc_deserialize(VALUE self, VALUE msg) {
   rtosc_arg_itr_t itr;
-  itr = rtosc_itr_begin(StringValuePtr(msg));
-
+  char* data = StringValuePtr(msg);
+  itr = rtosc_itr_begin(data);
   VALUE output = rb_ary_new();
 
+  rtosc_arg_val_t next_val;
+
   while(!rtosc_itr_end(itr)) {
-    rb_ary_push(output, rb_str_new2(rtosc_itr_next(&itr).val.s));
+
+    next_val = rtosc_itr_next(&itr);
+
+    switch(next_val.type) {
+      case 'i' :
+        // INT2FIX() for integers within 31bits.
+        rb_ary_push(output, INT2FIX(next_val.val.i));
+        break;
+      case 'f' :
+        rb_ary_push(output, rb_float_new(next_val.val.f));
+        break;
+      case 's' :
+        rb_ary_push(output, rb_str_new2(next_val.val.s));
+        break;
+      case 'b' :
+        rb_ary_push(output, rb_str_new((const char*)next_val.val.b.data, next_val.val.b.len));
+        break;
+      case 'h' :
+        // INT2NUM() for arbitrary sized integers
+        rb_ary_push(output, INT2NUM(next_val.val.h));
+        break;
+      case 't' :
+        // OSC time tag
+        // not implemented
+        break;
+      case 'd' :
+        rb_ary_push(output, rb_float_new(next_val.val.d));
+        break;
+      case 'S' :
+        rb_ary_push(output, ID2SYM(rb_intern(next_val.val.s)));
+        break;
+      case 'c' :
+        rb_ary_push(output, rb_str_concat(rb_str_new2(""), INT2FIX(next_val.val.i)));
+        break;
+    }
+
   }
 
   return output;
