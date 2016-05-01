@@ -10,6 +10,7 @@ VALUE FastOsc = Qnil;
 // implementing.
 void Init_fast_osc();
 VALUE method_fast_osc_deserialize(VALUE self, VALUE msg);
+VALUE method_fast_osc_serialize(VALUE self, VALUE address, VALUE args);
 
 // Initial setup function, takes no arguments and returns nothing. Some API
 // notes:
@@ -26,6 +27,7 @@ VALUE method_fast_osc_deserialize(VALUE self, VALUE msg);
 void Init_fast_osc() {
   FastOsc = rb_define_module("FastOsc");
   rb_define_singleton_method(FastOsc, "deserialize", method_fast_osc_deserialize, 1);
+  rb_define_singleton_method(FastOsc, "serialize", method_fast_osc_serialize, 2);
 }
 
 VALUE method_fast_osc_deserialize(VALUE self, VALUE msg) {
@@ -76,4 +78,125 @@ VALUE method_fast_osc_deserialize(VALUE self, VALUE msg) {
   }
 
   return output;
+}
+
+int buffer_size_for_ruby_string(VALUE rstring) {
+  int str_bytesize = FIX2INT(LONG2FIX(RSTRING_LEN(rstring)));
+  return (int)((str_bytesize + sizeof(int) - 1) & ~(sizeof(int) - 1));
+}
+
+VALUE method_fast_osc_serialize(VALUE self, VALUE address, VALUE args) {
+  char* c_address = StringValueCStr(address);
+
+  int no_of_args = NUM2INT(LONG2NUM(RARRAY_LEN(args)));
+  int i, arg_byte_size;
+  int max_buffer_size = 0;
+  VALUE current_arg;
+
+  //output tags and args list
+  VALUE tagstring = rb_str_new2(""); //rtosc will handle comma
+  rtosc_arg_t output_args[no_of_args];
+
+  for(i = 0; i < no_of_args; i++) {
+    current_arg = rb_ary_entry(args, i);
+
+    switch(TYPE(current_arg)) {
+      case T_FIXNUM:
+        // max bytes for a single numeric representation
+        max_buffer_size += 8;
+
+        if(FIX2LONG(current_arg) < ~(1 << 31)) {
+          rb_str_concat(tagstring, rb_str_new2("i"));
+          output_args[i].i = FIX2INT(current_arg);
+        } else {
+          rb_str_concat(tagstring, rb_str_new2("h"));
+          output_args[i].h = FIX2LONG(current_arg);
+        }
+        break;
+      case T_FLOAT:
+        // now align to 4 byte boundary for sizing output buffer
+        max_buffer_size += 8;
+
+        rb_str_concat(tagstring, rb_str_new2("f"));
+        output_args[i].f = NUM2DBL(current_arg);
+        break;
+      case T_STRING:
+        // now align to 4 byte boundary for sizing output buffer
+        max_buffer_size += buffer_size_for_ruby_string(current_arg);
+
+        rb_str_concat(tagstring, rb_str_new2("s"));
+        output_args[i].s = StringValueCStr(current_arg);
+        break;
+    }
+  }
+
+  //add space for the address and tag strings to the buffer
+  max_buffer_size += buffer_size_for_ruby_string(address);
+  max_buffer_size += buffer_size_for_ruby_string(tagstring);
+
+  // Get next largest power of two for buffer
+  max_buffer_size--;
+  max_buffer_size |= max_buffer_size >> 1;
+  max_buffer_size |= max_buffer_size >> 2;
+  max_buffer_size |= max_buffer_size >> 4;
+  max_buffer_size |= max_buffer_size >> 8;
+  max_buffer_size |= max_buffer_size >> 16;
+  max_buffer_size++;
+
+  char buffer[max_buffer_size];
+
+
+  int len = rtosc_amessage(buffer, sizeof(buffer), c_address, StringValueCStr(tagstring), output_args);
+
+  VALUE output = rb_str_new(buffer, len);
+  /* int j; */
+  /* for(j=0; j < len; j++) { */
+  /*   rb_str_concat(output, INT2FIX(buffer[j])); */
+  /* } */
+
+  return output;
+  /* return rb_str_new(buffer, len); */
+  /* VALUE output = rb_ary_new(); */
+
+
+  /* while(!rtosc_itr_end(itr)) { */
+
+  /*   next_val = rtosc_itr_next(&itr); */
+
+  /*   switch(next_val.type) { */
+  /*     case 'i' : */
+  /*       // INT2FIX() for integers within 31bits. */
+  /*       rb_ary_push(output, INT2FIX(next_val.val.i)); */
+  /*       break; */
+  /*     case 'f' : */
+  /*       rb_ary_push(output, rb_float_new(next_val.val.f)); */
+  /*       break; */
+  /*     case 's' : */
+  /*       rb_ary_push(output, rb_str_new2(next_val.val.s)); */
+  /*       break; */
+  /*     case 'b' : */
+  /*       rb_ary_push(output, rb_str_new((const char*)next_val.val.b.data, next_val.val.b.len)); */
+  /*       break; */
+  /*     case 'h' : */
+  /*       // INT2NUM() for arbitrary sized integers */
+  /*       rb_ary_push(output, INT2NUM(next_val.val.h)); */
+  /*       break; */
+  /*     case 't' : */
+  /*       // OSC time tag */
+  /*       // not implemented */
+  /*       break; */
+  /*     case 'd' : */
+  /*       rb_ary_push(output, rb_float_new(next_val.val.d)); */
+  /*       break; */
+  /*     case 'S' : */
+  /*       rb_ary_push(output, ID2SYM(rb_intern(next_val.val.s))); */
+  /*       break; */
+  /*     case 'c' : */
+  /*       rb_ary_push(output, rb_str_concat(rb_str_new(), INT2FIX(next_val.val.i))); */
+  /*       break; */
+  /*   } */
+
+  /* } */
+
+  /* return output; */
 }

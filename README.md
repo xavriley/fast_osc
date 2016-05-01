@@ -25,7 +25,7 @@ This will only work on a mac at the moment as that's what the `librtosc.a` was c
 Planned API
 
 ```
-FastOsc.serialise(["/aa", "foo", "bar"]) #=> "/aa\x00,ss\x00foo\x00bar\x00"
+FastOsc.serialise("/aa", ["foo", "bar"]) #=> "/aa\x00,ss\x00foo\x00bar\x00"
 FastOsc.deserialise("/aa\x00,ss\x00foo\x00bar\x00") #=> ["foo", "bar"]
 ```
 
