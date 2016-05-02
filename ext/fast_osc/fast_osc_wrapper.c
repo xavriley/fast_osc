@@ -1,5 +1,6 @@
 #include <ruby.h>
 #include <rtosc.h>
+#include <rtosc.c>
 
 // Allocate VALUE variables to hold the modules we'll create. Ruby values
 // are all of type VALUE. Qnil is the C representation of Ruby's nil.
