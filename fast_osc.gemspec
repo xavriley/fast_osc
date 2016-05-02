@@ -10,7 +10,7 @@ Gem::Specification.new do |spec|
   spec.email         = ["xavriley@hotmail.com"]
   spec.summary       = %q{Serialize and deserialize Open Sound Control messages}
   spec.description   = %q{Serialize and deserialize Open Sound Control messages using rtosc}
-  spec.homepage      = ""
+  spec.homepage      = "https://github.com/xavriley/fast_osc"
   spec.license       = "MIT"
 
   spec.files         = `git ls-files -z`.split("\x0")
