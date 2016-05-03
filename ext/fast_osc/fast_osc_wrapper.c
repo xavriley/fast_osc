@@ -90,7 +90,7 @@ VALUE method_fast_osc_serialize(VALUE self, VALUE address, VALUE args) {
   char* c_address = StringValueCStr(address);
 
   int no_of_args = NUM2INT(LONG2NUM(RARRAY_LEN(args)));
-  int i, arg_byte_size;
+  int i;
   int max_buffer_size = 0;
   VALUE current_arg;
 
