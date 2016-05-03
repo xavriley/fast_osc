@@ -23,6 +23,6 @@ dir_config(extension_name, HEADER_DIRS, LIB_DIRS)
 
 $srcs = ["fast_osc_wrapper.c"]
 
-$CFLAGS << " -std=c99 -Wall -Wextra -Wno-unused-parameter"
+$CFLAGS << " -std=c99 -Wall -Wextra -Wno-unused-parameter -pedantic "
 
 create_makefile(extension_name)
