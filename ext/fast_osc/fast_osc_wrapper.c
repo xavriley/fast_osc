@@ -10,8 +10,9 @@ VALUE FastOsc = Qnil;
 // when this file is loaded, and the second is the actual business logic we're
 // implementing.
 void Init_fast_osc();
-VALUE method_fast_osc_deserialize(VALUE self, VALUE msg);
-VALUE method_fast_osc_serialize(VALUE self, VALUE address, VALUE args);
+VALUE method_fast_osc_decode_single_message(VALUE self, VALUE msg);
+VALUE method_fast_osc_encode_single_message(VALUE self, VALUE address, VALUE args);
+VALUE method_fast_osc_encode_single_bundle(VALUE self, VALUE timestamp, VALUE address, VALUE args);
 
 // Initial setup function, takes no arguments and returns nothing. Some API
 // notes:
@@ -27,15 +28,24 @@ VALUE method_fast_osc_serialize(VALUE self, VALUE address, VALUE args);
 //
 void Init_fast_osc() {
   FastOsc = rb_define_module("FastOsc");
-  rb_define_singleton_method(FastOsc, "deserialize", method_fast_osc_deserialize, 1);
-  rb_define_singleton_method(FastOsc, "serialize", method_fast_osc_serialize, 2);
+  rb_define_singleton_method(FastOsc, "decode_single_message", method_fast_osc_decode_single_message, 1);
+  rb_define_singleton_method(FastOsc, "encode_single_message", method_fast_osc_encode_single_message, 2);
+  rb_define_singleton_method(FastOsc, "encode_single_bundle", method_fast_osc_encode_single_bundle, 3);
 }
 
-VALUE method_fast_osc_deserialize(VALUE self, VALUE msg) {
+const char *rtosc_path(const char *msg)
+{
+  return msg;
+}
+
+VALUE method_fast_osc_decode_single_message(VALUE self, VALUE msg) {
   rtosc_arg_itr_t itr;
   char* data = StringValuePtr(msg);
   itr = rtosc_itr_begin(data);
   VALUE output = rb_ary_new();
+  VALUE args_output = rb_ary_new();
+
+  VALUE path = rb_str_new2(rtosc_path(data));
 
   rtosc_arg_val_t next_val;
 
@@ -46,38 +56,40 @@ VALUE method_fast_osc_deserialize(VALUE self, VALUE msg) {
     switch(next_val.type) {
       case 'i' :
         // INT2FIX() for integers within 31bits.
-        rb_ary_push(output, INT2FIX(next_val.val.i));
+        rb_ary_push(args_output, INT2FIX(next_val.val.i));
         break;
       case 'f' :
-        rb_ary_push(output, rb_float_new(next_val.val.f));
+        rb_ary_push(args_output, rb_float_new(next_val.val.f));
         break;
       case 's' :
-        rb_ary_push(output, rb_str_new2(next_val.val.s));
+        rb_ary_push(args_output, rb_str_new2(next_val.val.s));
         break;
       case 'b' :
-        rb_ary_push(output, rb_str_new((const char*)next_val.val.b.data, next_val.val.b.len));
+        rb_ary_push(args_output, rb_str_new((const char*)next_val.val.b.data, next_val.val.b.len));
         break;
       case 'h' :
         // INT2NUM() for arbitrary sized integers
-        rb_ary_push(output, INT2NUM(next_val.val.h));
+        rb_ary_push(args_output, INT2NUM(next_val.val.h));
         break;
       case 't' :
         // OSC time tag
         // not implemented
         break;
       case 'd' :
-        rb_ary_push(output, rb_float_new(next_val.val.d));
+        rb_ary_push(args_output, rb_float_new(next_val.val.d));
         break;
       case 'S' :
-        rb_ary_push(output, ID2SYM(rb_intern(next_val.val.s)));
+        rb_ary_push(args_output, ID2SYM(rb_intern(next_val.val.s)));
         break;
       case 'c' :
-        rb_ary_push(output, rb_str_concat(rb_str_new2(""), INT2FIX(next_val.val.i)));
+        rb_ary_push(args_output, rb_str_concat(rb_str_new2(""), INT2FIX(next_val.val.i)));
         break;
     }
 
   }
 
+  rb_ary_push(output, path);
+  rb_ary_push(output, args_output);
   return output;
 }
 
@@ -86,7 +98,7 @@ int buffer_size_for_ruby_string(VALUE rstring) {
   return (int)((str_bytesize + sizeof(int) - 1) & ~(sizeof(int) - 1));
 }
 
-VALUE method_fast_osc_serialize(VALUE self, VALUE address, VALUE args) {
+VALUE method_fast_osc_encode_single_message(VALUE self, VALUE address, VALUE args) {
   char* c_address = StringValueCStr(address);
 
   int no_of_args = NUM2INT(LONG2NUM(RARRAY_LEN(args)));
@@ -150,6 +162,20 @@ VALUE method_fast_osc_serialize(VALUE self, VALUE address, VALUE args) {
   int len = rtosc_amessage(buffer, sizeof(buffer), c_address, StringValueCStr(tagstring), output_args);
 
   VALUE output = rb_str_new(buffer, len);
+
+  return output;
+}
+
+VALUE method_fast_osc_encode_single_bundle(VALUE self, VALUE timestamp, VALUE address, VALUE args) {
+  VALUE message = method_fast_osc_encode_single_message(self, address, args);
+  int bufsize = buffer_size_for_ruby_string(message) + 16;
+  int no_of_elems = 1;
+  uint64_t tt = FIX2LONG(timestamp);
+  char output_buffer[bufsize];
+
+  int len = rtosc_bundle(output_buffer, bufsize, tt, no_of_elems, StringValuePtr(message));
+
+  VALUE output = rb_str_new(output_buffer, len);
 
   return output;
 }

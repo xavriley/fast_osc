@@ -65,19 +65,19 @@ I'll include a better test in the repo in time.
 ## Usage
 
 ```
->> FastOsc.serialize("/foo", ["baz", 1, 2.0])
+>> FastOsc.encode_single_message("/foo", ["baz", 1, 2.0])
 => "/foo\x00\x00\x00\x00,sif\x00\x00\x00\x00baz\x00\x00\x00\x00\x01@\x00\x00\x00"
 >> res = _
->> FastOsc.deserialize(res)
-=> ["baz", 1, 2.0]
+>> FastOsc.decode_single_message(res)
+=> ["/foo", ["baz", 1, 2.0]]
+>> FastOsc.encode_single_bundle(Time.now.to_i, "/foo", ["baz", 1, 2.0])
+=> "#bundle\x00\x00\x00\x00\x00W*1\x7F\x00\x00\x00\x1C/foo\x00\x00\x00\x00,sif\x00\x00\x00\x00baz\x00\x00\x00\x00\x01@\x00\x00\x00"
 ```
 
 ## Still todo
 
 * Implement more types
-* return address with `deserialize` (doh!)
 * add tests at the Ruby level (rtosc C code is already tested)
-* figure out build process
 
 ## Development notes
 
