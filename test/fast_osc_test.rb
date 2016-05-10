@@ -6,7 +6,7 @@ class FastOscTest < Minitest::Test
   def setup
     @path = "/thisisatest"
     @args = [1, 2.0, "baz"]
-    @timestamp = Date.parse("1st Jan 1990").to_time
+    @timestamp = Date.parse("1st Jan 1990").to_time + 0.5
 
     @msg1 = OSC::Message.new(@path, *@args).encode
     @encoded_msg1 = @msg1.encode
@@ -31,7 +31,7 @@ class FastOscTest < Minitest::Test
 
   def test_that_it_encodes_a_single_bundle
     bundle1 = OSC::Bundle.new(@timestamp, @msg1).encode
-    bundle2 = FastOsc.encode_single_bundle(@timestamp.to_i, @path, @args)
+    bundle2 = FastOsc.encode_single_bundle(@timestamp, @path, @args)
 
     assert_equal bundle1, bundle2
   end

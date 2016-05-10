@@ -166,38 +166,25 @@ VALUE method_fast_osc_encode_single_message(VALUE self, VALUE address, VALUE arg
   return output;
 }
 
-static void sec_and_frac_to_timestamp(uint8_t *buffer, uint32_t sec, uint32_t frac)
-{
-  buffer[0] = ((sec>>24) & 0xff);
-  buffer[1] = ((sec>>16) & 0xff);
-  buffer[2] = ((sec>>8)  & 0xff);
-  buffer[3] = ((sec>>0)  & 0xff);
-  buffer[4] = ((frac>>24) & 0xff);
-  buffer[5] = ((frac>>16) & 0xff);
-  buffer[6] = ((frac>>8)  & 0xff);
-  buffer[7] = ((frac>>0)  & 0xff);
-}
+#define JAN_1970 2208988800.0     /* 2208988800 time from 1900 to 1970 in seconds */
 
-#define JAN_1970 0x83aa7e80     /* 2208988800 1970 - 1900 in seconds */
-
-uint64_t ruby_time_to_osc_timestamp(VALUE rubytime) {
+uint64_t ruby_time_to_osc_timetag(VALUE rubytime) {
+  // convert Time object to ntp
   double floattime = JAN_1970 + NUM2DBL(rb_funcall(rubytime, rb_intern("to_f"), 0));
 
-  uint32_t sec = (int)(floattime/1);
-  uint32_t frac = (int)(fmod(floattime, 1) * 4294967296); // * (2 ** 32)
+  uint32_t sec = NUM2UINT(DBL2NUM(floattime));
+  uint32_t frac = (int)(fmod(floattime, 1.0) * 4294967295); // * (2 ** 32)
 
-  uint8_t output[8];
+  uint64_t timetag = (uint64_t)((uint64_t)sec << 32 | (uint64_t)frac);
 
-  sec_and_frac_to_timestamp(&output, sec, frac);
-
-  return (uint64_t)output;
+  return timetag;
 }
 
-VALUE method_fast_osc_encode_single_bundle(VALUE self, VALUE timestamp, VALUE address, VALUE args) {
+VALUE method_fast_osc_encode_single_bundle(VALUE self, VALUE timetag, VALUE address, VALUE args) {
   VALUE message = method_fast_osc_encode_single_message(self, address, args);
   int bufsize = buffer_size_for_ruby_string(message) + 16;
   int no_of_elems = 1;
-  uint64_t tt = ruby_time_to_osc_timestamp(timestamp);
+  uint64_t tt = ruby_time_to_osc_timetag(timetag);
   char output_buffer[bufsize];
 
   int len = rtosc_bundle(output_buffer, bufsize, tt, no_of_elems, StringValuePtr(message));
