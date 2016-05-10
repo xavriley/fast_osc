@@ -72,6 +72,8 @@ I'll include a better test in the repo in time.
 => "#bundle\x00\x00\x00\x00\x00W*1\x7F\x00\x00\x00\x1C/foo\x00\x00\x00\x00,sif\x00\x00\x00\x00baz\x00\x00\x00\x00\x01@\x00\x00\x00"
 ```
 
+See the test suite for additional methods regarding bundles with timestamps. Bundles are only supported with a single message at present. A timestamp of `nil` is a special case meaning "immediately".
+
 ## Running the test suite
 
 ```
@@ -82,7 +84,10 @@ $ rake clean && rake clobber && rake compile && rake test
 ## Still todo
 
 * Implement more types
-* bring benchmarks into the repo
+* Bring benchmarks into the repo
+* Implement multi message/nested bundles
+* Documentation
+* Travis
 
 ## Development notes
 
