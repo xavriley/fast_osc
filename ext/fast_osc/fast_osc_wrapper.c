@@ -169,12 +169,24 @@ VALUE method_fast_osc_encode_single_message(VALUE self, VALUE address, VALUE arg
 #define JAN_1970 2208988800.0     /* 2208988800 time from 1900 to 1970 in seconds */
 
 uint64_t ruby_time_to_osc_timetag(VALUE rubytime) {
-  // convert Time object to ntp
-  double floattime = JAN_1970 + NUM2DBL(rb_funcall(rubytime, rb_intern("to_f"), 0));
+  uint64_t timetag;
+  double floattime;
+  uint32_t sec;
+  uint32_t frac;
 
-  uint32_t sec = NUM2UINT(DBL2NUM(floattime));
-  uint32_t frac = (int)(fmod(floattime, 1.0) * 4294967296); // * (2 ** 32)
-  uint64_t timetag = (uint64_t)((uint64_t)sec << 32 | (uint64_t)frac);
+  switch(TYPE(rubytime)) {
+    case T_NIL:
+      timetag = 1;
+      break;
+    default:
+      // convert Time object to ntp
+      floattime = JAN_1970 + NUM2DBL(rb_funcall(rubytime, rb_intern("to_f"), 0));
+
+      sec = NUM2UINT(DBL2NUM(floattime));
+      frac = (int)(fmod(floattime, 1.0) * 4294967296); // * (2 ** 32)
+      timetag = (uint64_t)((uint64_t)sec << 32 | (uint64_t)frac);
+      break;
+  }
 
   return timetag;
 }

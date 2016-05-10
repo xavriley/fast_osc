@@ -42,4 +42,18 @@ class FastOscTest < Minitest::Test
 
     assert_equal bundle1, bundle2
   end
+
+  def test_that_it_encodes_a_single_bundle_with_fractional_time
+    bundle1 = OSC::Bundle.new(@timestamp + 0.3343215, @msg1).encode
+    bundle2 = FastOsc.encode_single_bundle(@timestamp + 0.3343215, @path, @args)
+
+    assert_equal bundle1, bundle2
+  end
+
+  def test_that_it_encodes_a_single_bundle_with_special_immediate_time
+    bundle1 = OSC::Bundle.new(nil, @msg1).encode
+    bundle2 = FastOsc.encode_single_bundle(nil, @path, @args)
+
+    assert_equal bundle1, bundle2
+  end
 end
