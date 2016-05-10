@@ -173,8 +173,7 @@ uint64_t ruby_time_to_osc_timetag(VALUE rubytime) {
   double floattime = JAN_1970 + NUM2DBL(rb_funcall(rubytime, rb_intern("to_f"), 0));
 
   uint32_t sec = NUM2UINT(DBL2NUM(floattime));
-  uint32_t frac = (int)(fmod(floattime, 1.0) * 4294967295); // * (2 ** 32)
-
+  uint32_t frac = (int)(fmod(floattime, 1.0) * 4294967296); // * (2 ** 32)
   uint64_t timetag = (uint64_t)((uint64_t)sec << 32 | (uint64_t)frac);
 
   return timetag;

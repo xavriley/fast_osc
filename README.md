@@ -18,8 +18,6 @@ Or install it yourself as:
 
     $ gem install fast_osc
 
-This will only work on a mac at the moment as that's what the `librtosc.a` was compiled on.
-
 ## Is it fast?
 
 Let's see...
@@ -74,10 +72,17 @@ I'll include a better test in the repo in time.
 => "#bundle\x00\x00\x00\x00\x00W*1\x7F\x00\x00\x00\x1C/foo\x00\x00\x00\x00,sif\x00\x00\x00\x00baz\x00\x00\x00\x00\x01@\x00\x00\x00"
 ```
 
+## Running the test suite
+
+```
+$ gem install minitest # or bundle install
+$ rake clean && rake clobber && rake compile && rake test
+```
+
 ## Still todo
 
 * Implement more types
-* add tests at the Ruby level (rtosc C code is already tested)
+* bring benchmarks into the repo
 
 ## Development notes
 
