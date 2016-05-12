@@ -118,7 +118,7 @@ VALUE method_fast_osc_encode_single_message(int argc, VALUE* argv, VALUE self) {
   int no_of_args = NUM2INT(LONG2NUM(RARRAY_LEN(args)));
   int i;
   int max_buffer_size = 0;
-  VALUE current_arg;
+  VALUE current_arg, strval;
 
   //output tags and args list
   VALUE tagstring = rb_str_new2(""); //rtosc will handle comma
@@ -153,6 +153,14 @@ VALUE method_fast_osc_encode_single_message(int argc, VALUE* argv, VALUE self) {
 
         rb_str_concat(tagstring, rb_str_new2("s"));
         output_args[i].s = StringValueCStr(current_arg);
+        break;
+      case T_SYMBOL:
+        // now align to 4 byte boundary for sizing output buffer
+        strval = rb_str_new2(rb_id2name(current_arg));
+        max_buffer_size += buffer_size_for_ruby_string(strval);
+
+        rb_str_concat(tagstring, rb_str_new2("S"));
+        output_args[i].s = StringValueCStr(strval);
         break;
     }
   }

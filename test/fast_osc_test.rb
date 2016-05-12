@@ -64,4 +64,9 @@ class FastOscTest < Minitest::Test
 
     assert_equal bundle1, bundle2
   end
+
+  def test_sonic_pi_messages
+
+    FastOsc.encode_single_message("/s_new", [:foo])
+  end
 end
