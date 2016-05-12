@@ -11,8 +11,8 @@ VALUE FastOsc = Qnil;
 // implementing.
 void Init_fast_osc();
 VALUE method_fast_osc_decode_single_message(VALUE self, VALUE msg);
-VALUE method_fast_osc_encode_single_message(VALUE self, VALUE address, VALUE args);
-VALUE method_fast_osc_encode_single_bundle(VALUE self, VALUE timestamp, VALUE address, VALUE args);
+VALUE method_fast_osc_encode_single_message(int argc, VALUE* argv, VALUE self);
+VALUE method_fast_osc_encode_single_bundle(int argc, VALUE* argv, VALUE self);
 
 // Initial setup function, takes no arguments and returns nothing. Some API
 // notes:
@@ -29,8 +29,8 @@ VALUE method_fast_osc_encode_single_bundle(VALUE self, VALUE timestamp, VALUE ad
 void Init_fast_osc() {
   FastOsc = rb_define_module("FastOsc");
   rb_define_singleton_method(FastOsc, "decode_single_message", method_fast_osc_decode_single_message, 1);
-  rb_define_singleton_method(FastOsc, "encode_single_message", method_fast_osc_encode_single_message, 2);
-  rb_define_singleton_method(FastOsc, "encode_single_bundle", method_fast_osc_encode_single_bundle, 3);
+  rb_define_singleton_method(FastOsc, "encode_single_message", method_fast_osc_encode_single_message, -1);
+  rb_define_singleton_method(FastOsc, "encode_single_bundle", method_fast_osc_encode_single_bundle, -1);
 }
 
 const char *rtosc_path(const char *msg)
@@ -95,10 +95,24 @@ VALUE method_fast_osc_decode_single_message(VALUE self, VALUE msg) {
 
 int buffer_size_for_ruby_string(VALUE rstring) {
   int str_bytesize = FIX2INT(LONG2FIX(RSTRING_LEN(rstring)));
-  return (int)((str_bytesize + sizeof(int) - 1) & ~(sizeof(int) - 1));
+  int bufsize = (int)((str_bytesize + sizeof(int) - 1) & ~(sizeof(int) - 1));
+  return (bufsize + 4) & ~3u;
 }
 
-VALUE method_fast_osc_encode_single_message(VALUE self, VALUE address, VALUE args) {
+VALUE method_fast_osc_encode_single_message(int argc, VALUE* argv, VALUE self) {
+  VALUE address, args;
+
+  rb_scan_args(argc, argv, "11", &address, &args);
+
+  if (NIL_P(args)) args = rb_ary_new();
+
+  // Ruby C API only really allows methods that slurp in all the args
+  // Since we want the method to look like
+  //
+  // def encode_single_message(path, args=[])
+  //
+  // we need to muck around with the args option a bit
+  // VALUE* brings in args as a C array
   char* c_address = StringValueCStr(address);
 
   int no_of_args = NUM2INT(LONG2NUM(RARRAY_LEN(args)));
@@ -158,8 +172,12 @@ VALUE method_fast_osc_encode_single_message(VALUE self, VALUE address, VALUE arg
 
   char buffer[max_buffer_size];
 
-
-  int len = rtosc_amessage(buffer, sizeof(buffer), c_address, StringValueCStr(tagstring), output_args);
+  int len;
+  if(RSTRING_LEN(tagstring)) {
+    len = rtosc_amessage(buffer, sizeof(buffer), c_address, StringValueCStr(tagstring), output_args);
+  } else {
+    len = rtosc_message(buffer, sizeof(buffer), c_address, "");
+  }
 
   VALUE output = rb_str_new(buffer, len);
 
@@ -191,8 +209,19 @@ uint64_t ruby_time_to_osc_timetag(VALUE rubytime) {
   return timetag;
 }
 
-VALUE method_fast_osc_encode_single_bundle(VALUE self, VALUE timetag, VALUE address, VALUE args) {
-  VALUE message = method_fast_osc_encode_single_message(self, address, args);
+VALUE method_fast_osc_encode_single_bundle(int argc, VALUE* argv, VALUE self) {
+  VALUE timetag, path, args;
+  rb_scan_args(argc, argv, "21", &timetag, &path, &args);
+
+  if (NIL_P(args)) args = rb_ary_new();
+
+  VALUE combined_args_holder = rb_ary_new();
+  rb_ary_push(combined_args_holder, path);
+  rb_ary_push(combined_args_holder, args);
+  VALUE* combined_path_and_args = RARRAY_PTR(combined_args_holder);
+
+  // There are always 2 args here - [path, [args...]]
+  VALUE message = method_fast_osc_encode_single_message(2, combined_path_and_args, self);
   int bufsize = buffer_size_for_ruby_string(message) + 16;
   int no_of_elems = 1;
   uint64_t tt = ruby_time_to_osc_timetag(timetag);
