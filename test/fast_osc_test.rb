@@ -71,6 +71,7 @@ class FastOscTest < Minitest::Test
     outpath, outargs = FastOsc.decode_single_message(FastOsc.encode_single_message(path, args))
 
     assert_equal path, outpath
-    assert_equal args, outargs.map {|x| x.is_a?(Float) ? x.round(5) : x }
+    # normalize symbols to strings, round floats to 5 places
+    assert_equal args.map {|x| x.is_a?(Symbol) ? x.to_s : x}, outargs.map {|x| x.is_a?(Float) ? x.round(5) : x }
   end
 end
