@@ -5,7 +5,7 @@ require 'date'
 class FastOscTest < Minitest::Test
   def setup
     @path = "/thisisatest"
-    @args = ["", 1, 2.0, "baz", ""]
+    @args = ["", 1, 2.0, "baz"]
     @timestamp = Date.parse("1st Jan 1990").to_time
 
     @msg0 = OSC::Message.new(@path).encode
@@ -65,8 +65,12 @@ class FastOscTest < Minitest::Test
     assert_equal bundle1, bundle2
   end
 
-  def test_sonic_pi_messages
+  def test_that_it_encodes_and_decodes_messages_with_symbols
+    path = "/s_new"
+    args = ["sonic-pi-basic_mixer", 10, 0, 2, :amp, 1, :amp_slide, 0.1, :amp_slide_shape, 1, :amp_slide_curve, 0, "in_bus", 12, "amp", 0.3 , "out_bus", 10]
+    outpath, outargs = FastOsc.decode_single_message(FastOsc.encode_single_message(path, args))
 
-    FastOsc.encode_single_message("/s_new", [:foo])
+    assert_equal path, outpath
+    assert_equal args, outargs.map {|x| x.is_a?(Float) ? x.round(5) : x }
   end
 end
