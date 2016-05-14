@@ -210,9 +210,12 @@ uint64_t ruby_time_to_osc_timetag(VALUE rubytime) {
       // convert Time object to ntp
       floattime = JAN_1970 + NUM2DBL(rb_funcall(rubytime, rb_intern("to_f"), 0));
 
-      sec = NUM2UINT(DBL2NUM(floattime));
-      frac = (int)(fmod(floattime, 1.0) * 4294967296); // * (2 ** 32)
+      sec = floor(floattime);
+      frac = (uint32_t)(fmod(floattime, 1.0) * 4294967296); // * (2 ** 32)
+      /* printf("\nsec: %04x\n", sec); */
+      /* printf("\nfrac: %04x\n", frac); */
       timetag = (uint64_t)((uint64_t)sec << 32 | (uint64_t)frac);
+      /* printf("\ntimetag: %08llx\n", timetag); */
       break;
   }
 

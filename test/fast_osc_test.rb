@@ -74,4 +74,21 @@ class FastOscTest < Minitest::Test
     # normalize symbols to strings, round floats to 5 places
     assert_equal args.map {|x| x.is_a?(Symbol) ? x.to_s : x}, outargs.map {|x| x.is_a?(Float) ? x.round(5) : x }
   end
+
+  def test_that_encoded_timestamps_line_up
+    # this test is a bit convoluted but I found that fractional
+    # seconds weren't working when I plugged this into Sonic Pi
+    # This test ensures that the timestamp encoding matches to
+    # at least a tolerance of 0.001 seconds which should catch any
+    # major issues.
+    start = Time.at(1463234577.4387462) - 1.0
+    # assert_in_delta is 0.001 by default
+    assert_in_delta 1.25, Time.at(OSC::OSCPacket.messages_from_network(FastOsc.encode_single_bundle(1463234577.688746, "/foo", []), []).first.time - 2208988800) - start
+    assert_in_delta 1.5, Time.at(OSC::OSCPacket.messages_from_network(FastOsc.encode_single_bundle(1463234577.9387462, "/foo", []), []).first.time - 2208988800) - start
+    assert_in_delta 1.75, Time.at(OSC::OSCPacket.messages_from_network(FastOsc.encode_single_bundle(1463234578.188746, "/foo", []), []).first.time - 2208988800) - start
+    assert_in_delta 2.0,  Time.at(OSC::OSCPacket.messages_from_network(FastOsc.encode_single_bundle(1463234578.4387462, "/foo", []), []).first.time - 2208988800) - start
+    assert_in_delta 2.25, Time.at(OSC::OSCPacket.messages_from_network(FastOsc.encode_single_bundle(1463234578.688746, "/foo", []), []).first.time - 2208988800) - start
+    assert_in_delta 2.5,  Time.at(OSC::OSCPacket.messages_from_network(FastOsc.encode_single_bundle(1463234578.9387462, "/foo", []), []).first.time - 2208988800) - start
+    assert_in_delta 2.75, Time.at(OSC::OSCPacket.messages_from_network(FastOsc.encode_single_bundle(1463234579.188746, "/foo", []), []).first.time - 2208988800) - start
+  end
 end
