@@ -38,6 +38,35 @@ const char *rtosc_path(const char *msg)
   return msg;
 }
 
+#define JAN_1970 2208988800.0     /* 2208988800 time from 1900 to 1970 in seconds */
+
+uint64_t ruby_time_to_osc_timetag(VALUE rubytime) {
+  uint64_t timetag;
+  double floattime;
+  uint32_t sec;
+  uint32_t frac;
+
+  switch(TYPE(rubytime)) {
+    case T_NIL:
+      timetag = 1;
+      break;
+    default:
+      // convert Time object to ntp
+      floattime = JAN_1970 + NUM2DBL(rb_funcall(rubytime, rb_intern("to_f"), 0));
+
+      sec = floor(floattime);
+      frac = (uint32_t)(fmod(floattime, 1.0) * 4294967296); // * (2 ** 32)
+      /* printf("\nsec: %04x\n", sec); */
+      /* printf("\nfrac: %04x\n", frac); */
+      timetag = (uint64_t)((uint64_t)sec << 32 | (uint64_t)frac);
+      /* printf("\ntimetag: %08llx\n", timetag); */
+      break;
+  }
+
+  return timetag;
+}
+
+
 VALUE method_fast_osc_decode_single_message(VALUE self, VALUE msg) {
   rtosc_arg_itr_t itr;
   char* data = StringValuePtr(msg);
@@ -192,34 +221,6 @@ VALUE method_fast_osc_encode_single_message(int argc, VALUE* argv, VALUE self) {
   VALUE output = rb_str_new(buffer, len);
 
   return output;
-}
-
-#define JAN_1970 2208988800.0     /* 2208988800 time from 1900 to 1970 in seconds */
-
-uint64_t ruby_time_to_osc_timetag(VALUE rubytime) {
-  uint64_t timetag;
-  double floattime;
-  uint32_t sec;
-  uint32_t frac;
-
-  switch(TYPE(rubytime)) {
-    case T_NIL:
-      timetag = 1;
-      break;
-    default:
-      // convert Time object to ntp
-      floattime = JAN_1970 + NUM2DBL(rb_funcall(rubytime, rb_intern("to_f"), 0));
-
-      sec = floor(floattime);
-      frac = (uint32_t)(fmod(floattime, 1.0) * 4294967296); // * (2 ** 32)
-      /* printf("\nsec: %04x\n", sec); */
-      /* printf("\nfrac: %04x\n", frac); */
-      timetag = (uint64_t)((uint64_t)sec << 32 | (uint64_t)frac);
-      /* printf("\ntimetag: %08llx\n", timetag); */
-      break;
-  }
-
-  return timetag;
 }
 
 VALUE method_fast_osc_encode_single_bundle(int argc, VALUE* argv, VALUE self) {
