@@ -78,6 +78,9 @@ VALUE method_fast_osc_decode_single_message(VALUE self, VALUE msg) {
 
   rtosc_arg_val_t next_val;
 
+  // for timestamp arg decoding
+  uint64_t tt, secs, frac;
+
   while(!rtosc_itr_end(itr)) {
 
     next_val = rtosc_itr_next(&itr);
@@ -102,7 +105,18 @@ VALUE method_fast_osc_decode_single_message(VALUE self, VALUE msg) {
         break;
       case 't' :
         // OSC time tag
-        // not implemented
+        // need to decode OSC to unix timestamp
+        // then call Time.now with that
+        tt = next_val.val.t;
+        secs = (tt >> 32) - JAN_1970;
+        frac = tt & 0xFFFFFFFF;
+        // example call from grpc ruby extension
+        // https://github.com/grpc/grpc/blob/master/src/ruby/ext/grpc/rb_grpc.c
+        //   return rb_funcall(rb_cTime, id_at, 2, INT2NUM(real_time.tv_sec),
+        //                       INT2NUM(real_time.tv_nsec / 1000));
+        //printf("\nsec: %08llx\n", secs);
+        //printf("\nfrac: %08llx\n", frac);
+        rb_ary_push(args_output, rb_funcall(rb_cTime, rb_intern("at"), 2, INT2NUM(secs), INT2NUM(frac / 1000)));
         break;
       case 'd' :
         rb_ary_push(args_output, rb_float_new(next_val.val.d));
@@ -192,6 +206,15 @@ VALUE method_fast_osc_encode_single_message(int argc, VALUE* argv, VALUE self) {
         // alternative string tag
         rb_str_concat(tagstring, rb_str_new2("s"));
         output_args[i].s = StringValueCStr(strval);
+        break;
+      case T_DATA:
+        if (CLASS_OF(current_arg) == rb_cTime) {
+          // at present I only care about the Time as an object arg
+          max_buffer_size += 16;
+
+          rb_str_concat(tagstring, rb_str_new2("t"));
+          output_args[i].t = ruby_time_to_osc_timetag(current_arg);
+        }
         break;
     }
   }
