@@ -77,11 +77,12 @@ class FastOscTest < Minitest::Test
 
   def test_that_it_encodes_and_decodes_messages_with_timestamps
     path = "/s_new"
-    args = [Time.at(1463234577.688746)]
+    args = [Time.at(1463234577.488746)]
+    #args = [Time.at(1463234577.0)]
     outpath, outargs = FastOsc.decode_single_message(FastOsc.encode_single_message(path, args))
 
     assert_equal path, outpath
-    assert_equal args, outargs
+    assert_equal args.first.to_f.round(5), outargs.first.to_f.round(5)
   end
 
   def test_that_encoded_timestamps_line_up
