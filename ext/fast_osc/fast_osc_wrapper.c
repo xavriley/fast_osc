@@ -38,6 +38,35 @@ const char *rtosc_path(const char *msg)
   return msg;
 }
 
+#define JAN_1970 2208988800.0     /* 2208988800 time from 1900 to 1970 in seconds */
+
+uint64_t ruby_time_to_osc_timetag(VALUE rubytime) {
+  uint64_t timetag;
+  double floattime;
+  uint32_t sec;
+  uint32_t frac;
+
+  switch(TYPE(rubytime)) {
+    case T_NIL:
+      timetag = 1;
+      break;
+    default:
+      // convert Time object to ntp
+      floattime = JAN_1970 + NUM2DBL(rb_funcall(rubytime, rb_intern("to_f"), 0));
+
+      sec = floor(floattime);
+      frac = (uint32_t)(fmod(floattime, 1.0) * 4294967296); // * (2 ** 32)
+      // printf("\nsec: %04x\n", sec);
+      // printf("\nfrac: %04x\n", frac);
+      timetag = (uint64_t)((uint64_t)sec << 32 | (uint64_t)frac);
+      // printf("\ntimetag: %08llx\n", timetag);
+      break;
+  }
+
+  return timetag;
+}
+
+
 VALUE method_fast_osc_decode_single_message(VALUE self, VALUE msg) {
   rtosc_arg_itr_t itr;
   char* data = StringValuePtr(msg);
@@ -48,6 +77,9 @@ VALUE method_fast_osc_decode_single_message(VALUE self, VALUE msg) {
   VALUE path = rb_str_new2(rtosc_path(data));
 
   rtosc_arg_val_t next_val;
+
+  // for timestamp arg decoding
+  uint64_t tt, secs, frac;
 
   while(!rtosc_itr_end(itr)) {
 
@@ -73,7 +105,21 @@ VALUE method_fast_osc_decode_single_message(VALUE self, VALUE msg) {
         break;
       case 't' :
         // OSC time tag
-        // not implemented
+        // need to decode OSC (ntp style time) to unix timestamp
+        // then call Time.now with that
+        tt = next_val.val.t;
+        secs = (tt >> 32) - JAN_1970;
+        // taken from this SO post on how to convert NTP to Unix epoch
+        // http://stackoverflow.com/a/29138806
+        frac = ((tt & 0xFFFFFFFF) * 1000000) >> 32;
+        // example call from grpc ruby extension
+        // https://github.com/grpc/grpc/blob/master/src/ruby/ext/grpc/rb_grpc.c
+        //   return rb_funcall(rb_cTime, id_at, 2, INT2NUM(real_time.tv_sec),
+        //                       INT2NUM(real_time.tv_nsec / 1000));
+        // printf("\noutsec: %08llx\n", secs);
+        // printf("\noutfrac: %08llx\n", frac);
+        // printf("\nouttimetag: %08llx\n", tt);
+        rb_ary_push(args_output, rb_funcall(rb_cTime, rb_intern("at"), 2, LONG2NUM(secs), LONG2NUM(frac)));
         break;
       case 'd' :
         rb_ary_push(args_output, rb_float_new(next_val.val.d));
@@ -164,6 +210,15 @@ VALUE method_fast_osc_encode_single_message(int argc, VALUE* argv, VALUE self) {
         rb_str_concat(tagstring, rb_str_new2("s"));
         output_args[i].s = StringValueCStr(strval);
         break;
+      case T_DATA:
+        if (CLASS_OF(current_arg) == rb_cTime) {
+          // at present I only care about the Time as an object arg
+          max_buffer_size += 8;
+
+          rb_str_concat(tagstring, rb_str_new2("t"));
+          output_args[i].t = ruby_time_to_osc_timetag(current_arg);
+        }
+        break;
     }
   }
 
@@ -192,34 +247,6 @@ VALUE method_fast_osc_encode_single_message(int argc, VALUE* argv, VALUE self) {
   VALUE output = rb_str_new(buffer, len);
 
   return output;
-}
-
-#define JAN_1970 2208988800.0     /* 2208988800 time from 1900 to 1970 in seconds */
-
-uint64_t ruby_time_to_osc_timetag(VALUE rubytime) {
-  uint64_t timetag;
-  double floattime;
-  uint32_t sec;
-  uint32_t frac;
-
-  switch(TYPE(rubytime)) {
-    case T_NIL:
-      timetag = 1;
-      break;
-    default:
-      // convert Time object to ntp
-      floattime = JAN_1970 + NUM2DBL(rb_funcall(rubytime, rb_intern("to_f"), 0));
-
-      sec = floor(floattime);
-      frac = (uint32_t)(fmod(floattime, 1.0) * 4294967296); // * (2 ** 32)
-      /* printf("\nsec: %04x\n", sec); */
-      /* printf("\nfrac: %04x\n", frac); */
-      timetag = (uint64_t)((uint64_t)sec << 32 | (uint64_t)frac);
-      /* printf("\ntimetag: %08llx\n", timetag); */
-      break;
-  }
-
-  return timetag;
 }
 
 VALUE method_fast_osc_encode_single_bundle(int argc, VALUE* argv, VALUE self) {
