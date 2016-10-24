@@ -1,6 +1,8 @@
 #include <ruby.h>
+#include <ruby/encoding.h>
 #include <rtosc.h>
 #include <rtosc.c>
+
 
 // Allocate VALUE variables to hold the modules we'll create. Ruby values
 // are all of type VALUE. Qnil is the C representation of Ruby's nil.
@@ -73,6 +75,8 @@ VALUE method_fast_osc_decode_single_message(VALUE self, VALUE msg) {
   itr = rtosc_itr_begin(data);
   VALUE output = rb_ary_new();
   VALUE args_output = rb_ary_new();
+  VALUE string_arg;
+  int enc;
 
   VALUE path = rb_str_new2(rtosc_path(data));
 
@@ -94,7 +98,11 @@ VALUE method_fast_osc_decode_single_message(VALUE self, VALUE msg) {
         rb_ary_push(args_output, rb_float_new(next_val.val.f));
         break;
       case 's' :
-        rb_ary_push(args_output, rb_str_new2(next_val.val.s));
+        string_arg = rb_str_new2(next_val.val.s);
+        enc = rb_enc_find_index("UTF-8");
+        rb_enc_associate_index(string_arg, enc);
+
+        rb_ary_push(args_output, string_arg);
         break;
       case 'b' :
         rb_ary_push(args_output, rb_str_new((const char*)next_val.val.b.data, next_val.val.b.len));
