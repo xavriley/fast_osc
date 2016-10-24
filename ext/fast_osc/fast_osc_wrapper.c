@@ -245,7 +245,7 @@ VALUE method_fast_osc_encode_single_message(int argc, VALUE* argv, VALUE self) {
 
   char buffer[max_buffer_size];
 
-  int len;
+  unsigned long int len;
   if(RSTRING_LEN(tagstring)) {
     len = rtosc_amessage(buffer, sizeof(buffer), c_address, StringValueCStr(tagstring), output_args);
   } else {
@@ -275,7 +275,7 @@ VALUE method_fast_osc_encode_single_bundle(int argc, VALUE* argv, VALUE self) {
   uint64_t tt = ruby_time_to_osc_timetag(timetag);
   char output_buffer[bufsize];
 
-  int len = rtosc_bundle(output_buffer, bufsize, tt, no_of_elems, StringValuePtr(message));
+  unsigned long int len = rtosc_bundle(output_buffer, bufsize, tt, no_of_elems, StringValuePtr(message));
 
   VALUE output = rb_str_new(output_buffer, len);
 
