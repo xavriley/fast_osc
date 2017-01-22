@@ -171,7 +171,6 @@ VALUE method_fast_osc_encode_single_message(int argc, VALUE* argv, VALUE self) {
 
   int no_of_args = NUM2INT(LONG2NUM(RARRAY_LEN(args)));
   int i;
-  int max_buffer_size = 0;
   VALUE current_arg, strval;
 
   //output tags and args list
@@ -183,9 +182,6 @@ VALUE method_fast_osc_encode_single_message(int argc, VALUE* argv, VALUE self) {
 
     switch(TYPE(current_arg)) {
       case T_FIXNUM:
-        // max bytes for a single numeric representation
-        max_buffer_size += 8;
-
         if(FIX2LONG(current_arg) < ~(1 << 31)) {
           rb_str_concat(tagstring, rb_str_new2("i"));
           output_args[i].i = FIX2INT(current_arg);
@@ -195,23 +191,16 @@ VALUE method_fast_osc_encode_single_message(int argc, VALUE* argv, VALUE self) {
         }
         break;
       case T_FLOAT:
-        // now align to 4 byte boundary for sizing output buffer
-        max_buffer_size += 8;
-
         rb_str_concat(tagstring, rb_str_new2("f"));
         output_args[i].f = NUM2DBL(current_arg);
         break;
       case T_STRING:
-        // now align to 4 byte boundary for sizing output buffer
-        max_buffer_size += buffer_size_for_ruby_string(current_arg);
-
         rb_str_concat(tagstring, rb_str_new2("s"));
         output_args[i].s = StringValueCStr(current_arg);
         break;
       case T_SYMBOL:
         // now align to 4 byte boundary for sizing output buffer
         strval = rb_sym_to_s(current_arg);
-        max_buffer_size += buffer_size_for_ruby_string(strval);
 
         // encode as a string because not all implementation understand S as
         // alternative string tag
@@ -221,8 +210,6 @@ VALUE method_fast_osc_encode_single_message(int argc, VALUE* argv, VALUE self) {
       case T_DATA:
         if (CLASS_OF(current_arg) == rb_cTime) {
           // at present I only care about the Time as an object arg
-          max_buffer_size += 8;
-
           rb_str_concat(tagstring, rb_str_new2("t"));
           output_args[i].t = ruby_time_to_osc_timetag(current_arg);
         }
@@ -230,26 +217,20 @@ VALUE method_fast_osc_encode_single_message(int argc, VALUE* argv, VALUE self) {
     }
   }
 
-  //add space for the address and tag strings to the buffer
-  max_buffer_size += buffer_size_for_ruby_string(address);
-  max_buffer_size += buffer_size_for_ruby_string(tagstring);
-
-  // Get next largest power of two for buffer
-  max_buffer_size--;
-  max_buffer_size |= max_buffer_size >> 1;
-  max_buffer_size |= max_buffer_size >> 2;
-  max_buffer_size |= max_buffer_size >> 4;
-  max_buffer_size |= max_buffer_size >> 8;
-  max_buffer_size |= max_buffer_size >> 16;
-  max_buffer_size++;
-
-  char buffer[max_buffer_size];
-
   unsigned long int len;
+  // When buffer is NULL, the function returns the size of the buffer required to store the message
   if(RSTRING_LEN(tagstring)) {
-    len = rtosc_amessage(buffer, sizeof(buffer), c_address, StringValueCStr(tagstring), output_args);
+    len = rtosc_amessage(NULL, 0, c_address, StringValueCStr(tagstring), output_args);
   } else {
-    len = rtosc_message(buffer, sizeof(buffer), c_address, "");
+    len = rtosc_message(NULL, 0, c_address, "");
+  }
+
+  // duplicate if/else due to compiler errors
+  char buffer[len];
+  if(RSTRING_LEN(tagstring)) {
+    rtosc_amessage(buffer, len, c_address, StringValueCStr(tagstring), output_args);
+  } else {
+    rtosc_message(buffer, len, c_address, "");
   }
 
   VALUE output = rb_str_new(buffer, len);
