@@ -4,6 +4,8 @@
 
 A Ruby wrapper around [rtosc](https://github.com/fundamental/rtosc/) to encode and decode OSC messages.
 
+This also includes a fallback implementation in pure Ruby in the case that the compiled version doesn't load properly. This can be forced by setting an environment variable of `FAST_OSC_USE_FALLBACK=1` where needed.
+
 ## Installation
 
 Add this line to your application's Gemfile:
