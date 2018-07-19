@@ -43,7 +43,7 @@ Calculating -------------------------------------
             osc-ruby     83.203k (±12.6%) i/s -    415.314k in   5.073578s
 ```
 
-## Decoding Bencmark
+### Decoding Bencmark
 
 ```
 Warming up --------------------------------------
@@ -57,6 +57,63 @@ Calculating -------------------------------------
 ```
 
 Benchmarks are now part of this repo - run `rake test` to see the results for yourself.
+
+## What about Truffle Ruby?
+
+> A high performance implementation of the Ruby programming language. Built on GraalVM by Oracle Labs.
+
+Just for fun, I re-ran the benchmarks using TruffleRuby. First some install steps:
+
+```
+git clone this repo
+bundle install
+export PATH="/usr/local/opt/llvm@4/bin:$PATH"
+rake clean && rake compile
+```
+
+then the test:
+
+```
+$ rake test
+ENCODING TEST
+Warming up --------------------------------------
+            fast_osc     3.000  i/100ms
+             samsosc    28.219k i/100ms
+            osc-ruby   234.000  i/100ms
+Calculating -------------------------------------
+            fast_osc     33.294  (±45.1%) i/s -    129.000  in   5.295649s
+             samsosc      1.369M (±33.5%) i/s -      3.556M in   5.010343s
+            osc-ruby    274.170k (±20.2%) i/s -      1.064M in   4.971832s
+DECODING TEST
+Warming up --------------------------------------
+            fast_osc     9.000  i/100ms
+             samsosc     6.087k i/100ms
+            osc-ruby   418.000  i/100ms
+Calculating -------------------------------------
+            fast_osc     71.034  (±45.0%) i/s -    261.000  in   5.015393s
+             samsosc    114.443k (±70.2%) i/s -    261.741k in   5.283892s
+            osc-ruby     84.236k (±34.7%) i/s -    237.424k in   5.317738s
+```
+
+### The Good
+
+The encoding benchmark - the optimised pure Ruby version is nearly as fast as
+the C extension!
+
+```
+# C ext in MRI
+fast_osc    797.673k (±15.0%) i/s -      3.900M in   5.043770s
+# Pure Ruby in Truffle
+samsosc      1.369M (±33.5%) i/s -      3.556M in   5.010343s
+```
+
+### The Bad
+
+Decoding was generally slower, although the (non optimised) osc gem seemed to
+prefer TruffleRuby, running around 40% faster.
+
+Also the performance of the C extension in TruffleRuby was very, very poor but
+this may be due to not warming up enough.
 
 ## Usage
 
