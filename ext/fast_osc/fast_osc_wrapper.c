@@ -2,7 +2,6 @@
 #include <ruby/encoding.h>
 #include <rtosc.h>
 #include <rtosc.c>
-#include <math.h>
 
 
 // Allocate VALUE variables to hold the modules we'll create. Ruby values
@@ -79,7 +78,7 @@ VALUE osc_timetag_to_ruby_time(uint64_t timetag) {
 
   // Time.at(seconds, microsecs_with_frac)
   VALUE c_time = rb_const_get(rb_cObject, rb_intern("Time"));
-  VALUE rb_time = rb_funcall(c_time, rb_intern("at"), 2, UINT2NUM(secs - JAN_1970), DBL2NUM(1.0 * frac / pow(2, 32)));
+  VALUE rb_time = rb_funcall(c_time, rb_intern("at"), 2, UINT2NUM(secs - JAN_1970), DBL2NUM(1.0 * frac / 4294967296.0));
 
   return rb_time;
 }
