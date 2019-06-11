@@ -6,7 +6,7 @@
 #include <ctype.h>
 #include <assert.h>
 
-// #include <rtosc.h>
+#include <rtosc.h>
 
 const char *rtosc_argument_string(const char *msg)
 {
