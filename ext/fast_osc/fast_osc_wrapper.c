@@ -74,7 +74,7 @@ uint64_t ruby_time_to_osc_timetag(VALUE rubytime) {
 
 VALUE osc_timetag_to_ruby_time(uint64_t timetag) {
   uint32_t secs = timetag >> 32;
-  uint32_t frac = timetag & 32;
+  uint32_t frac = timetag;
 
   // Time.at(seconds, microsecs_with_frac)
   VALUE c_time = rb_const_get(rb_cObject, rb_intern("Time"));
