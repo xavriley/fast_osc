@@ -75,10 +75,10 @@ uint64_t ruby_time_to_osc_timetag(VALUE rubytime) {
 VALUE osc_timetag_to_ruby_time(uint64_t timetag) {
   uint32_t secs = timetag >> 32;
   uint32_t frac = timetag;
+  double d_frac = 1.0 * frac / 4294967296.0;
 
-  // Time.at(seconds, microsecs_with_frac)
   VALUE c_time = rb_const_get(rb_cObject, rb_intern("Time"));
-  VALUE rb_time = rb_funcall(c_time, rb_intern("at"), 2, UINT2NUM(secs - JAN_1970), DBL2NUM(1.0 * frac / 4294967296.0));
+  VALUE rb_time = rb_funcall(c_time, rb_intern("at"), 1, DBL2NUM((secs - JAN_1970 + d_frac)));
 
   return rb_time;
 }
