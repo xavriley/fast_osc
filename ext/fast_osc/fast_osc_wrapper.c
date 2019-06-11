@@ -1,7 +1,6 @@
 #include <ruby.h>
 #include <ruby/encoding.h>
 #include <rtosc.h>
-#include <rtosc.c>
 
 
 // Allocate VALUE variables to hold the modules we'll create. Ruby values
