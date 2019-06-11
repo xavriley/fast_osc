@@ -35,7 +35,7 @@ void Init_fast_osc() {
   rb_define_singleton_method(FastOsc, "decode_single_message", method_fast_osc_decode_single_message, 1);
   rb_define_singleton_method(FastOsc, "encode_single_message", method_fast_osc_encode_single_message, -1);
   rb_define_singleton_method(FastOsc, "encode_single_bundle", method_fast_osc_encode_single_bundle, -1);
-  rb_define_singleton_method(FastOsc, "is_bundle", method_fast_osc_is_bundle, 1);
+  rb_define_singleton_method(FastOsc, "is_bundle?", method_fast_osc_is_bundle, 1);
   rb_define_singleton_method(FastOsc, "decode_bundle", method_fast_osc_decode_bundle, 1);
 }
 
