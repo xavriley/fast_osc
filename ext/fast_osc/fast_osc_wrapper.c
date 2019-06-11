@@ -2,6 +2,7 @@
 #include <ruby/encoding.h>
 #include <rtosc.h>
 #include <rtosc.c>
+#include <math.h>
 
 
 // Allocate VALUE variables to hold the modules we'll create. Ruby values
@@ -15,6 +16,8 @@ void Init_fast_osc();
 VALUE method_fast_osc_decode_single_message(VALUE self, VALUE msg);
 VALUE method_fast_osc_encode_single_message(int argc, VALUE* argv, VALUE self);
 VALUE method_fast_osc_encode_single_bundle(int argc, VALUE* argv, VALUE self);
+VALUE method_fast_osc_is_bundle(VALUE self, VALUE msg);
+VALUE method_fast_osc_decode_bundle(VALUE self, VALUE msg);
 
 // Initial setup function, takes no arguments and returns nothing. Some API
 // notes:
@@ -33,6 +36,8 @@ void Init_fast_osc() {
   rb_define_singleton_method(FastOsc, "decode_single_message", method_fast_osc_decode_single_message, 1);
   rb_define_singleton_method(FastOsc, "encode_single_message", method_fast_osc_encode_single_message, -1);
   rb_define_singleton_method(FastOsc, "encode_single_bundle", method_fast_osc_encode_single_bundle, -1);
+  rb_define_singleton_method(FastOsc, "is_bundle", method_fast_osc_is_bundle, 1);
+  rb_define_singleton_method(FastOsc, "decode_bundle", method_fast_osc_decode_bundle, 1);
 }
 
 const char *rtosc_path(const char *msg)
@@ -68,6 +73,45 @@ uint64_t ruby_time_to_osc_timetag(VALUE rubytime) {
   return timetag;
 }
 
+VALUE osc_timetag_to_ruby_time(uint64_t timetag) {
+  uint32_t secs = timetag >> 32;
+  uint32_t frac = timetag & 32;
+
+  // Time.at(seconds, microsecs_with_frac)
+  VALUE c_time = rb_const_get(rb_cObject, rb_intern("Time"));
+  VALUE rb_time = rb_funcall(c_time, rb_intern("at"), 2, UINT2NUM(secs - JAN_1970), DBL2NUM(1.0 * frac / pow(2, 32)));
+
+  return rb_time;
+}
+
+VALUE method_fast_osc_is_bundle(VALUE self, VALUE msg) {
+  char* data = StringValuePtr(msg);
+  return (rtosc_bundle_p(data) ? Qtrue : Qfalse);
+}
+
+VALUE method_fast_osc_decode_bundle(VALUE self, VALUE msg) {
+  char* data = StringValuePtr(msg);
+  VALUE output = rb_ary_new();
+  VALUE args_output = rb_ary_new();
+  // Check that this is indeed a bundle
+  if (!rtosc_bundle_p(data)){
+    return Qnil;
+  }
+
+  uint64_t timetag = rtosc_bundle_timetag(data);
+  rb_ary_push(output, osc_timetag_to_ruby_time(timetag));
+  int n_messages = rtosc_bundle_elements(data, 1024);
+  for (int i = 0; i < n_messages; i++){
+    int message_size = rtosc_bundle_size(data, i+1); // I don't know why, but this function seems to work in 1-index...
+    const char *message = rtosc_bundle_fetch(data, i);
+    VALUE rb_message = rb_str_new(message, message_size);
+    VALUE element = method_fast_osc_decode_single_message(self, rb_message);
+    rb_ary_push(args_output, element);
+  }
+
+  rb_ary_push(output, args_output);
+  return output;
+}
 
 VALUE method_fast_osc_decode_single_message(VALUE self, VALUE msg) {
   rtosc_arg_itr_t itr;

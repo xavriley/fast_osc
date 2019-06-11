@@ -6,12 +6,18 @@ class FastOscTest < Minitest::Test
   def setup
     @path = "/thisisatest"
     @args = ["", 1, 2.0, "baz", "▁▃▅▇"]
+    @args2 = [1]
     @timestamp = Date.parse("1st Jan 1990").to_time
 
     @msg0 = OSC::Message.new(@path).encode
     @encoded_msg0 = @msg0.encode
     @msg1 = OSC::Message.new(@path, *@args).encode
     @encoded_msg1 = @msg1.encode
+    @msg2 = OSC::Message.new(@path, *@args2).encode
+    @encoded_msg2 = @msg2.encode
+
+    @bundle = OSC::Bundle.new(@timestamp, @msg1, @msg2)
+    @encoded_bundle = @bundle.encode
   end
 
   def test_that_it_has_a_version_number
@@ -49,6 +55,27 @@ class FastOscTest < Minitest::Test
     bundle2 = FastOsc.encode_single_bundle(@timestamp, @path, @args)
 
     assert_equal bundle1, bundle2
+  end
+
+  def test_that_it_detects_bundles_properly
+    assert_equal true, FastOsc.is_bundle(@encoded_bundle)
+    assert_equal false, FastOsc.is_bundle(@encoded_msg0)
+  end
+
+  def test_that_it_decodes_a_bundle
+    timestamp, msgs = FastOsc.decode_bundle(@encoded_bundle)
+    assert_equal @timestamp, timestamp
+    path, args = msgs[0]
+    assert_equal @path, path
+    assert_equal @args, args
+    path, args = msgs[1]
+    assert_equal @path, path
+    assert_equal @args2, args
+  end
+
+  def test_that_it_returns_nil_if_not_bundle
+    msg = FastOsc.decode_bundle(@encoded_msg0)
+    assert_nil msg
   end
 
   def test_that_it_encodes_a_single_bundle_with_fractional_time
