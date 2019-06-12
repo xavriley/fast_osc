@@ -58,8 +58,8 @@ class FastOscTest < Minitest::Test
   end
 
   def test_that_it_detects_bundles_properly
-    assert_equal true, FastOsc.is_bundle?(@encoded_bundle)
-    assert_equal false, FastOsc.is_bundle?(@encoded_msg0)
+    assert_equal true, FastOsc.bundle?(@encoded_bundle)
+    assert_equal false, FastOsc.bundle?(@encoded_msg0)
   end
 
   def test_that_it_decodes_a_bundle

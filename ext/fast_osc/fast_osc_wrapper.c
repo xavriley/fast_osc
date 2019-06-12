@@ -14,7 +14,7 @@ void Init_fast_osc();
 VALUE method_fast_osc_decode_single_message(VALUE self, VALUE msg);
 VALUE method_fast_osc_encode_single_message(int argc, VALUE* argv, VALUE self);
 VALUE method_fast_osc_encode_single_bundle(int argc, VALUE* argv, VALUE self);
-VALUE method_fast_osc_is_bundle(VALUE self, VALUE msg);
+VALUE method_fast_osc_bundle(VALUE self, VALUE msg);
 VALUE method_fast_osc_decode_bundle(VALUE self, VALUE msg);
 
 // Initial setup function, takes no arguments and returns nothing. Some API
@@ -34,7 +34,7 @@ void Init_fast_osc() {
   rb_define_singleton_method(FastOsc, "decode_single_message", method_fast_osc_decode_single_message, 1);
   rb_define_singleton_method(FastOsc, "encode_single_message", method_fast_osc_encode_single_message, -1);
   rb_define_singleton_method(FastOsc, "encode_single_bundle", method_fast_osc_encode_single_bundle, -1);
-  rb_define_singleton_method(FastOsc, "is_bundle?", method_fast_osc_is_bundle, 1);
+  rb_define_singleton_method(FastOsc, "bundle?", method_fast_osc_bundle, 1);
   rb_define_singleton_method(FastOsc, "decode_bundle", method_fast_osc_decode_bundle, 1);
 }
 
@@ -82,7 +82,7 @@ VALUE osc_timetag_to_ruby_time(uint64_t timetag) {
   return rb_time;
 }
 
-VALUE method_fast_osc_is_bundle(VALUE self, VALUE msg) {
+VALUE method_fast_osc_bundle(VALUE self, VALUE msg) {
   char* data = StringValuePtr(msg);
   return (rtosc_bundle_p(data) ? Qtrue : Qfalse);
 }
