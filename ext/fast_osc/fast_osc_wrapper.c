@@ -14,9 +14,8 @@ void Init_fast_osc();
 VALUE method_fast_osc_decode_single_message(VALUE self, VALUE msg);
 VALUE method_fast_osc_encode_single_message(int argc, VALUE* argv, VALUE self);
 VALUE method_fast_osc_encode_single_bundle(int argc, VALUE* argv, VALUE self);
-VALUE method_fast_osc_bundle(VALUE self, VALUE msg);
-VALUE method_fast_osc_decode_bundle(VALUE self, VALUE msg);
-
+VALUE method_fast_osc_decode(VALUE self, VALUE msg);
+VALUE method_fast_osc_decode_do(VALUE self, VALUE msg, VALUE output);
 // Initial setup function, takes no arguments and returns nothing. Some API
 // notes:
 //
@@ -31,11 +30,10 @@ VALUE method_fast_osc_decode_bundle(VALUE self, VALUE msg);
 //
 void Init_fast_osc() {
   FastOsc = rb_define_module("FastOsc");
-  rb_define_singleton_method(FastOsc, "decode_single_message", method_fast_osc_decode_single_message, 1);
+  rb_define_singleton_method(FastOsc, "decode", method_fast_osc_decode, 1);
+  rb_define_singleton_method(FastOsc, "decode_no_bundles", method_fast_osc_decode_single_message, 1);
   rb_define_singleton_method(FastOsc, "encode_single_message", method_fast_osc_encode_single_message, -1);
   rb_define_singleton_method(FastOsc, "encode_single_bundle", method_fast_osc_encode_single_bundle, -1);
-  rb_define_singleton_method(FastOsc, "bundle?", method_fast_osc_bundle, 1);
-  rb_define_singleton_method(FastOsc, "decode_bundle", method_fast_osc_decode_bundle, 1);
 }
 
 const char *rtosc_path(const char *msg)
@@ -82,34 +80,65 @@ VALUE osc_timetag_to_ruby_time(uint64_t timetag) {
   return rb_time;
 }
 
-VALUE method_fast_osc_bundle(VALUE self, VALUE msg) {
-  char* data = StringValuePtr(msg);
-  return (rtosc_bundle_p(data) ? Qtrue : Qfalse);
+/*
+# Example of how to process the messages in ruby:
+msgs.each do |timestamp, osc_messages|
+  # These are the messages within this bundle
+  puts "T: #{timestamp}, D: #{osc_messages}"
+  osc_messages.each do |path, args|
+    # And this is each message
+    puts "P: #{path}, A: #{args}"
+  end
+end
+*/
+VALUE method_fast_osc_decode(VALUE self, VALUE msg) {
+  VALUE output_ary = rb_ary_new();
+  // If we get != Qnil, then there were no bundles, and we need to add the element
+  VALUE element = method_fast_osc_decode_do(self, msg, output_ary);
+  if (element != Qnil){
+    VALUE element_ary = rb_ary_new();
+    rb_ary_push(element_ary, osc_timetag_to_ruby_time(1));
+    rb_ary_push(element_ary, element);
+    rb_ary_push(output_ary, element_ary);
+  }
+  return output_ary;
 }
 
-VALUE method_fast_osc_decode_bundle(VALUE self, VALUE msg) {
+VALUE method_fast_osc_decode_do(VALUE self, VALUE msg, VALUE output_ary) {
   char* data = StringValuePtr(msg);
-  VALUE output = rb_ary_new();
-  VALUE args_output = rb_ary_new();
-  // Check that this is indeed a bundle
-  if (!rtosc_bundle_p(data)){
+  int data_len = RSTRING_LEN(msg);
+  VALUE elements_ary = Qnil;
+  VALUE bundle_output_ary;
+
+  if (rtosc_bundle_p(data)){
+    int n_messages = rtosc_bundle_elements(data, data_len);
+    for (int i = 0; i < n_messages; i++){
+      int message_size = rtosc_bundle_size(data, i+1); // This function seems to work in 1-index, looks like a bug, reported and PR issued
+      const char *message = rtosc_bundle_fetch(data, i);
+      VALUE rb_message = rb_str_new(message, message_size);
+      VALUE element = method_fast_osc_decode_do(self, rb_message, output_ary);
+      if (element != Qnil){
+        if (elements_ary == Qnil){
+          elements_ary = rb_ary_new();
+        }
+        rb_ary_push(elements_ary, element);
+      }
+    }
+    if (elements_ary != Qnil){
+      uint64_t timetag = rtosc_bundle_timetag(data);
+      bundle_output_ary = rb_ary_new();
+      rb_ary_push(bundle_output_ary, osc_timetag_to_ruby_time(timetag));
+      rb_ary_push(bundle_output_ary, elements_ary);
+      rb_ary_push(output_ary, bundle_output_ary);
+    }
     return Qnil;
   }
-
-  uint64_t timetag = rtosc_bundle_timetag(data);
-  rb_ary_push(output, osc_timetag_to_ruby_time(timetag));
-  int n_messages = rtosc_bundle_elements(data, 1024);
-  for (int i = 0; i < n_messages; i++){
-    int message_size = rtosc_bundle_size(data, i+1); // I don't know why, but this function seems to work in 1-index...
-    const char *message = rtosc_bundle_fetch(data, i);
-    VALUE rb_message = rb_str_new(message, message_size);
-    VALUE element = method_fast_osc_decode_single_message(self, rb_message);
-    rb_ary_push(args_output, element);
+  else{
+    VALUE element = method_fast_osc_decode_single_message(self, msg);
+    return element;
   }
-
-  rb_ary_push(output, args_output);
-  return output;
 }
+
 
 VALUE method_fast_osc_decode_single_message(VALUE self, VALUE msg) {
   rtosc_arg_itr_t itr;

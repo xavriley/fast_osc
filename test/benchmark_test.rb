@@ -43,7 +43,7 @@ end
 # puts samosc.decode_single_message(test_message).inspect
 puts "DECODING TEST"
 Benchmark.ips do |bencher|
-  bencher.report("fast_osc") { FastOsc.decode_single_message(test_message) }
+  bencher.report("fast_osc") { FastOsc.decode_no_bundles(test_message) }
   bencher.report("samsosc") { samosc.decode_single_message(test_message) }
   bencher.report("osc-ruby") { oscruby.messages_from_network(test_message) }
 
