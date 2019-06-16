@@ -113,7 +113,7 @@ VALUE method_fast_osc_decode_do(VALUE self, VALUE msg, VALUE output_ary) {
   if (rtosc_bundle_p(data)){
     int n_messages = rtosc_bundle_elements(data, data_len);
     for (int i = 0; i < n_messages; i++){
-      int message_size = rtosc_bundle_size(data, i+1); // This function seems to work in 1-index, looks like a bug, reported and PR issued
+      int message_size = rtosc_bundle_size(data, i);
       const char *message = rtosc_bundle_fetch(data, i);
       VALUE rb_message = rb_str_new(message, message_size);
       VALUE element = method_fast_osc_decode_do(self, rb_message, output_ary);
