@@ -1,7 +1,5 @@
 # FastOsc
 
-`WARNING - Work in progress. Probably not safe for production yet`
-
 A Ruby wrapper around [rtosc](https://github.com/fundamental/rtosc/) to encode and decode OSC messages.
 
 This also includes a fallback implementation in pure Ruby in the case that the compiled version doesn't load properly. This can be forced by setting an environment variable of `FAST_OSC_USE_FALLBACK=1` where needed.
@@ -162,12 +160,12 @@ $ rake clean && rake clobber && rake compile && rake test
 
 ## Still todo
 
--[x] Implement more types
--[x] Bring benchmarks into the repo
--[ ] Work out cross compilation story for easier packaging
--[ ] Implement multi message/nested bundles
--[ ] Documentation
--[ ] Travis
+- [x] Implement more types
+- [x] Bring benchmarks into the repo
+- [ ] Work out cross compilation story for easier packaging
+- [x] Implement multi message/nested bundles
+- [ ] More documentation
+- [x] Travis
 
 ## Development notes
 
