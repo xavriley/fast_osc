@@ -7,7 +7,12 @@ class FastOscTest < Minitest::Test
     @path = "/thisisatest"
     @args = ["", 1, 2.0, "baz", "▁▃▅▇"]
     @args2 = [1]
+    @args3 = ["somestring", 2]
+    @args4 = [3, 5.0, "another_string"]
     @timestamp = Date.parse("1st Jan 1990").to_time
+    @timestamp2 = Date.parse("21st Mar 2000").to_time
+    @timestamp3 = Date.parse("22nd Jun 2010").to_time
+
 
     @msg0 = OSC::Message.new(@path).encode
     @encoded_msg0 = @msg0.encode
@@ -15,9 +20,20 @@ class FastOscTest < Minitest::Test
     @encoded_msg1 = @msg1.encode
     @msg2 = OSC::Message.new(@path, *@args2).encode
     @encoded_msg2 = @msg2.encode
+    @msg3 = OSC::Message.new(@path, *@args3).encode
+    @encoded_msg3 = @msg3.encode
+    @msg4 = OSC::Message.new(@path, *@args4).encode
+    @encoded_msg4 = @msg4.encode
 
     @bundle = OSC::Bundle.new(@timestamp, @msg1, @msg2)
     @encoded_bundle = @bundle.encode
+
+    @bundle2 = OSC::Bundle.new(@timestamp2, @msg2, @bundle, @msg3)
+    @encoded_bundle2 = @bundle2.encode
+
+    @bundle3 = OSC::Bundle.new(@timestamp3, @msg4, @bundle2, @msg3, @msg2)
+    @encoded_bundle3 = @bundle3.encode
+
   end
 
   def test_that_it_has_a_version_number
@@ -30,11 +46,16 @@ class FastOscTest < Minitest::Test
     assert_equal msg, @encoded_msg0
   end
 
+
   def test_that_it_decodes_a_single_message
-    path, args = FastOsc.decode_single_message(@encoded_msg0)
+    msgs = FastOsc.decode(@encoded_msg0)
+
+    _timestamp, osc_msgs = msgs[0]
+    path, args = osc_msgs
 
     assert path == @path
     assert args == []
+    assert_nil msgs[1]
   end
 
   def test_that_it_encodes_a_single_message_with_args
@@ -44,11 +65,30 @@ class FastOscTest < Minitest::Test
   end
 
   def test_that_it_decodes_a_single_message_with_args
-    path, args = FastOsc.decode_single_message(@encoded_msg1)
+    msgs = FastOsc.decode(@encoded_msg1)
+
+    _timestamp, osc_msgs = msgs[0]
+    path, args = osc_msgs
+
+    assert_equal path, @path
+    assert_equal args, @args
+    assert_nil msgs[1]
+  end
+
+  def test_that_it_decodes_a_single_message_with_args_knowing_there_are_no_bundles_using_the_decode_function
+    _timestamp, (path, args) =  FastOsc.decode(@encoded_msg1)[0]
 
     assert_equal path, @path
     assert_equal args, @args
   end
+
+  def test_that_it_decodes_a_single_message_with_args_knowing_there_are_no_bundles_using_the_decode_no_bundles_function
+    path, args =  FastOsc.decode_no_bundles(@encoded_msg1)
+
+    assert_equal path, @path
+    assert_equal args, @args
+  end
+
 
   def test_that_it_encodes_a_single_bundle
     bundle1 = OSC::Bundle.new(@timestamp, @msg1).encode
@@ -57,26 +97,116 @@ class FastOscTest < Minitest::Test
     assert_equal bundle1, bundle2
   end
 
-  def test_that_it_detects_bundles_properly
-    assert_equal true, FastOsc.bundle?(@encoded_bundle)
-    assert_equal false, FastOsc.bundle?(@encoded_msg0)
-  end
-
   def test_that_it_decodes_a_bundle
-    timestamp, msgs = FastOsc.decode_bundle(@encoded_bundle)
+    msgs = FastOsc.decode(@encoded_bundle)
+
+    timestamp, osc_msgs = msgs[0]
     assert_equal @timestamp, timestamp
-    path, args = msgs[0]
+
+    path, args = osc_msgs[0]
     assert_equal @path, path
     assert_equal @args, args
-    path, args = msgs[1]
+
+    path, args = osc_msgs[1]
     assert_equal @path, path
     assert_equal @args2, args
+
+    assert_nil osc_msgs[2]
+    assert_nil msgs[1]
   end
 
-  def test_that_it_returns_nil_if_not_bundle
-    msg = FastOsc.decode_bundle(@encoded_msg0)
-    assert_nil msg
+  def test_that_it_decodes_a_nested_bundle
+    msgs = FastOsc.decode(@encoded_bundle2)
+
+    # Example of how to process the message:
+    #msgs.each do |timestamp, osc_messages|
+      # These are the messages within this bundle
+    #  puts "T: #{timestamp}, M: #{osc_messages}"
+    #  osc_messages.each do |path, args|
+        # And this is each message
+    #    puts "P: #{path}, A: #{args}"
+    #  end
+    #end
+
+    timestamp, osc_msgs = msgs[0]
+    assert_equal @timestamp, timestamp
+
+    path, args = osc_msgs[0]
+    assert_equal @path, path
+    assert_equal @args, args
+
+    path, args = osc_msgs[1]
+    assert_equal @path, path
+    assert_equal @args2, args
+
+    assert_nil osc_msgs[2]
+
+    timestamp, osc_msgs = msgs[1]
+    assert_equal @timestamp2, timestamp
+
+    path, args = osc_msgs[0]
+    assert_equal @path, path
+    assert_equal @args2, args
+
+    path, args = osc_msgs[1]
+    assert_equal @path, path
+    assert_equal @args3, args
+    assert_nil osc_msgs[2]
+
+    assert_nil msgs[2]
   end
+
+  def test_that_it_decodes_another_nested_bundle
+    msgs = FastOsc.decode(@encoded_bundle3)
+
+    timestamp, osc_msgs = msgs[0]
+    assert_equal @timestamp, timestamp
+
+    path, args = osc_msgs[0]
+    assert_equal @path, path
+    assert_equal @args, args
+
+    path, args = osc_msgs[1]
+    assert_equal @path, path
+    assert_equal @args2, args
+
+    assert_nil osc_msgs[2]
+
+    timestamp, osc_msgs = msgs[1]
+    assert_equal @timestamp2, timestamp
+
+    path, args = osc_msgs[0]
+    assert_equal @path, path
+    assert_equal @args2, args
+
+    path, args = osc_msgs[1]
+    assert_equal @path, path
+    assert_equal @args3, args
+    assert_nil osc_msgs[2]
+
+    timestamp, osc_msgs = msgs[2]
+    assert_equal @timestamp3, timestamp
+
+    path, args = osc_msgs[0]
+    assert_equal @path, path
+    assert_equal @args4, args
+
+    path, args = osc_msgs[1]
+    assert_equal @path, path
+    assert_equal @args3, args
+
+    path, args = osc_msgs[2]
+    assert_equal @path, path
+    assert_equal @args2, args
+
+    assert_nil osc_msgs[3]
+
+
+
+    assert_nil msgs[3]
+
+  end
+
 
   def test_that_it_encodes_a_single_bundle_with_fractional_time
     bundle1 = OSC::Bundle.new(@timestamp + 0.3343215, @msg1).encode
@@ -92,27 +222,8 @@ class FastOscTest < Minitest::Test
     assert_equal bundle1, bundle2
   end
 
-  def test_that_it_encodes_and_decodes_messages_with_symbols
-    path = "/s_new"
-    args = ["sonic-pi-basic_mixer", 10, 0, 2, :amp, 1, :amp_slide, 0.1, :amp_slide_shape, 1, :amp_slide_curve, 0, "in_bus", 12, "amp", 0.3 , "out_bus", 10]
-    outpath, outargs = FastOsc.decode_single_message(FastOsc.encode_single_message(path, args))
 
-    assert_equal path, outpath
-    # normalize symbols to strings, round floats to 5 places
-    assert_equal args.map {|x| x.is_a?(Symbol) ? x.to_s : x}, outargs.map {|x| x.is_a?(Float) ? x.round(5) : x }
-  end
-
-  def test_that_it_encodes_and_decodes_messages_with_timestamps
-    path = "/s_new"
-    args = [Time.at(1463234577.488746)]
-    #args = [Time.at(1463234577.0)]
-    outpath, outargs = FastOsc.decode_single_message(FastOsc.encode_single_message(path, args))
-
-    assert_equal path, outpath
-    assert_equal args.first.to_f.round(5), outargs.first.to_f.round(5)
-  end
-
-  def test_that_encoded_timestamps_line_up
+  def _test_that_encoded_timestamps_line_up
     # this test is a bit convoluted but I found that fractional
     # seconds weren't working when I plugged this into Sonic Pi
     # This test ensures that the timestamp encoding matches to
