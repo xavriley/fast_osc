@@ -127,7 +127,7 @@ end
 # Allow for loading above method in benmarks without clobbering c-ext
 if ENV['FAST_OSC_USE_FALLBACK'] == "true"
 module FastOsc
-  def decode_single_message(m)
+  def decode_no_bundles(m)
     SonicPi::OSC::OscEncode.new.decode_single_message(m)
   end
 end
