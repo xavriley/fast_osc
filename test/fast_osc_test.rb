@@ -33,7 +33,6 @@ class FastOscTest < Minitest::Test
 
     @bundle3 = OSC::Bundle.new(@timestamp3, @msg4, @bundle2, @msg3, @msg2)
     @encoded_bundle3 = @bundle3.encode
-
   end
 
   def test_that_it_has_a_version_number
@@ -46,16 +45,15 @@ class FastOscTest < Minitest::Test
     assert_equal msg, @encoded_msg0
   end
 
-
   def test_that_it_decodes_a_single_message
-    msgs = FastOsc.decode(@encoded_msg0)
+    FastOsc.decode(@encoded_msg0).each do |msg|
+      _timestamp, osc_msgs = msg
 
-    _timestamp, osc_msgs = msgs[0]
-    path, args = osc_msgs
-
-    assert path == @path
-    assert args == []
-    assert_nil msgs[1]
+      osc_msgs.each do |(path, args)|
+        assert_equal @path, path
+        assert_equal args, []
+      end
+    end
   end
 
   def test_that_it_encodes_a_single_message_with_args
@@ -65,21 +63,14 @@ class FastOscTest < Minitest::Test
   end
 
   def test_that_it_decodes_a_single_message_with_args
-    msgs = FastOsc.decode(@encoded_msg1)
+    FastOsc.decode(@encoded_msg1).each do |msg|
+      _timestamp, osc_msgs = msg
+      path, args = osc_msgs[0]
 
-    _timestamp, osc_msgs = msgs[0]
-    path, args = osc_msgs
-
-    assert_equal path, @path
-    assert_equal args, @args
-    assert_nil msgs[1]
-  end
-
-  def test_that_it_decodes_a_single_message_with_args_knowing_there_are_no_bundles_using_the_decode_function
-    _timestamp, (path, args) =  FastOsc.decode(@encoded_msg1)[0]
-
-    assert_equal path, @path
-    assert_equal args, @args
+      assert_equal path, @path
+      assert_equal args, @args
+      assert_equal osc_msgs.length, 1
+    end
   end
 
   def test_that_it_decodes_a_single_message_with_args_knowing_there_are_no_bundles_using_the_decode_no_bundles_function
@@ -119,11 +110,11 @@ class FastOscTest < Minitest::Test
     msgs = FastOsc.decode(@encoded_bundle2)
 
     # Example of how to process the message:
-    #msgs.each do |timestamp, osc_messages|
-      # These are the messages within this bundle
+    # msgs.each do |timestamp, osc_messages|
+    #  # These are the messages within this bundle
     #  puts "T: #{timestamp}, M: #{osc_messages}"
     #  osc_messages.each do |path, args|
-        # And this is each message
+    #   # And this is each message
     #    puts "P: #{path}, A: #{args}"
     #  end
     #end
@@ -213,6 +204,17 @@ class FastOscTest < Minitest::Test
     bundle2 = FastOsc.encode_single_bundle(@timestamp + 0.3343215, @path, @args)
 
     assert_equal bundle1, bundle2
+  end
+
+  def test_that_single_messages_and_bundles_can_still_be_iterated_over
+    multiple_decoded = FastOsc.decode(@encoded_bundle)
+    single_decoded = FastOsc.decode(@msg1)
+
+    timestamp1, msgs1 = multiple_decoded.first
+    assert_equal msgs1.first.class, Array
+
+    timestamp2, msgs2 = single_decoded.first
+    assert_equal msgs2.first.class, Array
   end
 
   def test_that_it_encodes_a_single_bundle_with_special_immediate_time

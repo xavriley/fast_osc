@@ -96,9 +96,14 @@ VALUE method_fast_osc_decode(VALUE self, VALUE msg) {
   // If we get != Qnil, then there were no bundles, and we need to add the element
   VALUE element = method_fast_osc_decode_do(self, msg, output_ary);
   if (element != Qnil){
+    // format [[timestamp, [[ ... msg ...]]]]
+    // enclosing arrays match output shape of decode_do
+    VALUE msgs_ary = rb_ary_new();
     VALUE element_ary = rb_ary_new();
-    rb_ary_push(element_ary, osc_timetag_to_ruby_time(1));
-    rb_ary_push(element_ary, element);
+    // A timestamp of `nil` is a special case meaning "immediately".
+    rb_ary_push(element_ary, Qnil);
+    rb_ary_push(msgs_ary, element);
+    rb_ary_push(element_ary, msgs_ary);
     rb_ary_push(output_ary, element_ary);
   }
   return output_ary;
