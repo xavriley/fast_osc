@@ -13,6 +13,7 @@
 
 
 # requires benchmark/ips gem to be installed
+return unless ENV['WITH_BENCHMARKS']
 
 require 'test_helper'
 require 'benchmark/ips'
