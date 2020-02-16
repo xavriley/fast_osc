@@ -26,11 +26,13 @@ module SonicPi
         @literal_low_i = 'i'.freeze
         @literal_low_g = 'g'.freeze
         @literal_low_s = 's'.freeze
+        @literal_low_b = 'b'.freeze
         @literal_empty_str = ''.freeze
         @literal_str_encode_regexp = /\000.*\z/
         @literal_str_pad = "\000".freeze
         @literal_two_to_pow_2 = 2 ** 32
         @literal_magic_time_offset = 2208988800
+        @ascii_encoding = Encoding.find("ASCII-8BIT")
 
         @use_cache = use_cache
         @integer_cache = {}
@@ -92,9 +94,14 @@ module SonicPi
             end
           when String, Symbol
             arg = arg.to_s
-            tags << @literal_low_s
-
-            args_encoded << get_from_or_add_to_string_cache(arg)
+            if(arg.encoding == @ascii_encoding)
+              tags <<  @literal_low_b
+              args_encoded << [arg.bytesize].pack(@literal_cap_n)
+              args_encoded << [arg].pack("Z#{arg.bytesize + 4 - (arg.bytesize % 4)}")
+            else
+              tags << @literal_low_s
+              args_encoded << get_from_or_add_to_string_cache(arg)
+            end
           else
             raise "Unknown arg type to encode: #{arg.inspect}"
           end
@@ -102,7 +109,7 @@ module SonicPi
 
         tags_encoded = get_from_or_add_to_string_cache(tags)
         # Address here needs to be a new string, not sure why
-        "#{address}#{tags_encoded}#{args_encoded}"
+        "#{address}#{tags_encoded}#{args_encoded}".force_encoding("ASCII-8BIT")
       end
 
       def encode_single_bundle(ts, address, args=[])
@@ -132,6 +139,8 @@ module SonicPi
       end
 
       def time_encoded(time)
+        return "\x00\x00\x00\x00\x00\x00\x00\x01" if time.nil?
+
         t1, fr = (time.to_f + @literal_magic_time_offset).divmod(1)
 
         t2 = (fr * @literal_two_to_pow_2).to_i
@@ -151,13 +160,4 @@ module SonicPi
       end
     end
   end
-end
-
-# Allow for loading above method in benmarks without clobbering c-ext
-if ENV['FAST_OSC_USE_FALLBACK'] == "true"
-module FastOsc
-  def encode_single_message(address, args=[])
-    SonicPi::OSC::OscEncode.new.encode_single_message(address, args)
-  end
-end
 end
