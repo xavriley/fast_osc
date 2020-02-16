@@ -1,3 +1,4 @@
+#include <stdbool.h>
 #include <ruby.h>
 #include <ruby/encoding.h>
 #include <rtosc.h>
@@ -181,7 +182,11 @@ VALUE method_fast_osc_decode_single_message(VALUE self, VALUE msg) {
         rb_ary_push(args_output, string_arg);
         break;
       case 'b' :
-        rb_ary_push(args_output, rb_str_new((const char*)next_val.val.b.data, next_val.val.b.len));
+        string_arg = rb_str_new((const char*)next_val.val.b.data, next_val.val.b.len);
+        enc = rb_enc_find_index("ASCII-8BIT");
+        rb_enc_associate_index(string_arg, enc);
+
+        rb_ary_push(args_output, string_arg);
         break;
       case 'h' :
         // INT2NUM() for arbitrary sized integers
@@ -271,8 +276,21 @@ VALUE method_fast_osc_encode_single_message(int argc, VALUE* argv, VALUE self) {
         output_args[i].f = NUM2DBL(current_arg);
         break;
       case T_STRING:
-        rb_str_concat(tagstring, rb_str_new2("s"));
-        output_args[i].s = StringValueCStr(current_arg);
+        {
+        VALUE rb_string_encoding;
+        rb_string_encoding = rb_funcall(current_arg, rb_intern("encoding"), 0); // #=> Encoding:UTF-8 
+
+        // check for ASCII-8BIT after converting to symbol
+        // if present, set as blob arg, else string
+        // if(rb_string_encoding._dump.to_sym == :"ASCII-8BIT") { ... }
+        if(rb_funcall(rb_funcall(rb_string_encoding, rb_intern("_dump"), 0), rb_intern("=="), 1, rb_str_new2("ASCII-8BIT"))) {
+            rb_str_concat(tagstring, rb_str_new2("b"));
+            output_args[i].b = (rtosc_blob_t){RSTRING_LEN(current_arg), StringValuePtr(current_arg)};
+        } else {
+            rb_str_concat(tagstring, rb_str_new2("s"));
+            output_args[i].s = StringValueCStr(current_arg);
+        }
+        }
         break;
       case T_SYMBOL:
         // now align to 4 byte boundary for sizing output buffer
@@ -285,11 +303,11 @@ VALUE method_fast_osc_encode_single_message(int argc, VALUE* argv, VALUE self) {
         break;
       case T_DATA:
         if (CLASS_OF(current_arg) == rb_cTime) {
-          // at present I only care about the Time as an object arg
+          // check for Time as an object arg
           rb_str_concat(tagstring, rb_str_new2("t"));
           output_args[i].t = ruby_time_to_osc_timetag(current_arg);
         }
-        break;
+	break;
     }
   }
 

@@ -13,6 +13,11 @@ class FastOscTest < Minitest::Test
     @timestamp2 = Date.parse("21st Mar 2000").to_time
     @timestamp3 = Date.parse("22nd Jun 2010").to_time
 
+    # SuperCollider (the main client for this lib)
+    # treats arrays of int8s as a blob
+    # https://doc.sccode.org/Guides/OSC_communication.html
+    @nested_array_args = [1, 2, [-127, 0, 4, 5, 6, 127].join.force_encoding("ASCII-8BIT")]
+    @nested_array_args_blob_encoding = [1, 2, OSC::OSCBlob.new([-127, 0, 4, 5, 6, 127].join)]
 
     @msg0 = OSC::Message.new(@path).encode
     @encoded_msg0 = @msg0.encode
@@ -24,6 +29,8 @@ class FastOscTest < Minitest::Test
     @encoded_msg3 = @msg3.encode
     @msg4 = OSC::Message.new(@path, *@args4).encode
     @encoded_msg4 = @msg4.encode
+    @msg5 = OSC::Message.new(@path, *@nested_array_args_blob_encoding).encode
+    @encoded_msg5 = @msg5.encode
 
     @bundle = OSC::Bundle.new(@timestamp, @msg1, @msg2)
     @encoded_bundle = @bundle.encode
@@ -69,6 +76,23 @@ class FastOscTest < Minitest::Test
 
       assert_equal path, @path
       assert_equal args, @args
+      assert_equal osc_msgs.length, 1
+    end
+  end
+
+  def test_that_it_encodes_a_single_message_with_nested_array_args
+    msg = FastOsc.encode_single_message(@path, @nested_array_args)
+
+    assert_equal msg, @encoded_msg5
+  end
+
+  def test_that_it_decodes_a_single_message_with_nested_array_args
+    FastOsc.decode(@encoded_msg5).each do |msg|
+      _timestamp, osc_msgs = msg
+      path, args = osc_msgs[0]
+
+      assert_equal path, @path
+      assert_equal args, @nested_array_args
       assert_equal osc_msgs.length, 1
     end
   end

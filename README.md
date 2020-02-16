@@ -52,6 +52,11 @@ end
 
  A timestamp of `nil` is a special case meaning "immediately".
 
+### A note on types
+
+To represent the `blob` type tag from the OSC spec, FastOsc uses strings with
+the `ASCII-8BIT` encoding. UTF-8 strings remain as normal string tags.
+
 ## Is it fast?
 
 Let's see...
