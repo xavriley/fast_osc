@@ -23,6 +23,7 @@ module SonicPi
         @num_cached_integers = 0
         @num_cached_floats = 0
         @string_terminator = "\x00".freeze
+        @bundle_header = "#bundle\x00".freeze
         @args = []
         @i_tag = "i".freeze
         @f_tag = "f".freeze
@@ -36,6 +37,9 @@ module SonicPi
         @low_g = 'g'.freeze
         @q_lt = 'q>'.freeze
         @binary_encoding = "BINARY".freeze
+
+        @literal_magic_time_offset = 2208988800
+        @literal_cap_n = 'N'.freeze
       end
 
       def decode_single_message(m)
@@ -96,6 +100,7 @@ module SonicPi
               orig_idx = idx
               idx = m.index(@string_terminator, orig_idx)
               arg, idx =  m[orig_idx...idx], idx + 1 + ((4 - ((idx + 1) % 4)) % 4)
+              arg.force_encoding("UTF-8")
             when @d_tag
               # double64
               arg, idx = m[idx, 8].unpack(@cap_g)[0], idx + 8
@@ -120,15 +125,53 @@ module SonicPi
         return address, args
       end
 
+      def decode(m)
+        # bundle length (element)
+        #        length (element)
+        # if no bundle?
+        #   return nil + messages
+        # bundle length (1 * length )
+        #   if end of string return
+        # else next_length + (1 * next_length)
+        # this is recursive but the output structure isn't
+        # build nested list first
+        # [
+        #   [tt,[[msg1path, msg1args]]],
+        #   [msg1path, msg1args],
+        #   [tt,[[msg1path, msg1args]]]
+        # ]
+        # then munge the output into the correct format
+        return nil if m.length == 0
+
+        message_list = []
+
+        message_list << if m[0] == "/"
+          self.decode_single_message(m)
+        elsif m[0..7] == @bundle_header
+          time_tag = time_decoded(m[8..15])
+          bundle_length = m[16..19].unpack(@literal_cap_n).first
+          [time_tag, self.decode(m[20..(19+bundle_length)]),
+           self.decode(m[(20+bundle_length)..])]
+        else
+          bundle_length = m[0..3].unpack(@literal_cap_n).first
+          [self.decode(m[4..(3+bundle_length)]),
+           self.decode(m[(4+bundle_length)..])]
+        end
+
+        message_list
+      end
+
+      private
+
+      def time_decoded(time)
+        return nil if time.nil?
+
+        t1 = time[0..3].unpack(@literal_cap_n).first
+        t1 = (t1 - @literal_magic_time_offset)
+
+        t2 = time[4..].unpack(@literal_cap_n).first
+        Time.at(t1 + t2)
+      end
     end
   end
-end
-
-# Allow for loading above method in benmarks without clobbering c-ext
-if ENV['FAST_OSC_USE_FALLBACK'] == "true"
-module FastOsc
-  def decode_no_bundles(m)
-    SonicPi::OSC::OscEncode.new.decode_single_message(m)
-  end
-end
 end
