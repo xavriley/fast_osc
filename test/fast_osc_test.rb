@@ -102,6 +102,12 @@ module FastOscTesting
 
     assert_equal path, @path
     assert_equal args, @args
+
+    # test the alias while we're here
+    path, args =  FastOsc.decode_single_message(@encoded_msg1)
+
+    assert_equal path, @path
+    assert_equal args, @args
   end
 
 
