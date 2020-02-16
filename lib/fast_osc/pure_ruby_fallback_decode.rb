@@ -125,52 +125,61 @@ module SonicPi
         return address, args
       end
 
-      def decode(m)
-        # bundle length (element)
-        #        length (element)
-        # if no bundle?
-        #   return nil + messages
-        # bundle length (1 * length )
-        #   if end of string return
-        # else next_length + (1 * next_length)
-        # this is recursive but the output structure isn't
-        # build nested list first
-        # [
-        #   [tt,[[msg1path, msg1args]]],
-        #   [msg1path, msg1args],
-        #   [tt,[[msg1path, msg1args]]]
-        # ]
-        # then munge the output into the correct format
-        return nil if m.length == 0
+      def decode(m, output=[])
+        tt = parse_timetag(m)
+        raw_msgs, raw_bundles = parse_bundles(m)
 
-        message_list = []
+        output << [tt, raw_msgs.map {|m| self.decode_single_message(m) }]
 
-        message_list << if m[0] == "/"
-          self.decode_single_message(m)
-        elsif m[0..7] == @bundle_header
-          time_tag = time_decoded(m[8..15])
-          bundle_length = m[16..19].unpack(@literal_cap_n).first
-          [time_tag, self.decode(m[20..(19+bundle_length)]),
-           self.decode(m[(20+bundle_length)..])]
+        if raw_bundles.any?
+          output << raw_bundles[1..-1]
+          self.decode(raw_bundles.first, output)
         else
-          bundle_length = m[0..3].unpack(@literal_cap_n).first
-          [self.decode(m[4..(3+bundle_length)]),
-           self.decode(m[(4+bundle_length)..])]
+          # for compatibility with the C Extension API
+          return output.reject {|msg| msg.empty? }.reverse
         end
-
-        message_list
       end
 
       private
 
-      def time_decoded(time)
-        return nil if time.nil?
+      def parse_timetag(m)
+        return nil unless is_bundle?(m)
 
-        t1 = time[0..3].unpack(@literal_cap_n).first
+        t1 = m[8..11].unpack(@literal_cap_n).first
         t1 = (t1 - @literal_magic_time_offset)
 
-        t2 = time[4..].unpack(@literal_cap_n).first
+        t2 = m[12..15].unpack(@literal_cap_n).first
         Time.at(t1 + t2)
+      end
+
+      def parse_bundles(m)
+        raw_msgs = []
+        raw_bundles = []
+
+        if is_bundle?(m)
+          rest_of_message = m[16..-1]
+
+          while rest_of_message && rest_of_message.bytesize > 0
+            first_element_length = rest_of_message[0..3].unpack(@literal_cap_n).first
+            first_element = rest_of_message[4..(4 + first_element_length - 1)]
+
+            if is_bundle?(first_element)
+              raw_bundles << first_element
+            else
+              raw_msgs << first_element
+            end
+
+            rest_of_message = rest_of_message[(4 + first_element_length)..-1]
+          end
+        else
+          raw_msgs << m
+        end
+
+        [raw_msgs, raw_bundles]
+      end
+
+      def is_bundle?(m)
+        m[0..7] == @bundle_header
       end
     end
   end
