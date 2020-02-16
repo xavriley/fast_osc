@@ -57,6 +57,8 @@ end
 To represent the `blob` type tag from the OSC spec, FastOsc uses strings with
 the `ASCII-8BIT` encoding. UTF-8 strings remain as normal string tags.
 
+For examples of this, see the test suite.
+
 ## Is it fast?
 
 Let's see...
@@ -72,13 +74,14 @@ Key:
 ```
 $ WITH_BENCHMARKS=1 rake test
 Warming up --------------------------------------
-            fast_osc    64.995k i/100ms
-             samsosc    23.371k i/100ms
-            osc-ruby     7.691k i/100ms
+            fast_osc    94.043k i/100ms
+             samsosc    41.231k i/100ms
+            osc-ruby    17.476k i/100ms
 Calculating -------------------------------------
-            fast_osc    797.673k (±15.0%) i/s -      3.900M in   5.043770s
-             samsosc    258.331k (±12.8%) i/s -      1.285M in   5.063755s
-            osc-ruby     83.203k (±12.6%) i/s -    415.314k in   5.073578s
+            fast_osc      1.186M (± 3.7%) i/s -      5.925M in   5.004014s
+             samsosc    458.561k (± 4.1%) i/s -      2.309M in   5.043860s
+            osc-ruby    182.051k (± 4.6%) i/s -    908.752k in   5.003313s
+DECODING TEST
 ```
 
 ### Decoding Bencmark
@@ -86,27 +89,20 @@ Calculating -------------------------------------
 ```
 $ WITH_BENCHMARKS=1 rake test
 Warming up --------------------------------------
-            fast_osc   102.344k i/100ms
-             samsosc    20.770k i/100ms
-            osc-ruby     3.145k i/100ms
+            fast_osc   208.209k i/100ms
+             samsosc    38.760k i/100ms
+            osc-ruby     6.844k i/100ms
 Calculating -------------------------------------
-            fast_osc      1.650M (±14.5%) i/s -      8.085M in   5.017162s
-             samsosc    234.951k (±14.0%) i/s -      1.163M in   5.049167s
-            osc-ruby     34.266k (±13.3%) i/s -    169.830k in   5.048509s
+            fast_osc      3.679M (± 3.8%) i/s -     18.531M in   5.044888s
+             samsosc    430.488k (± 3.0%) i/s -      2.171M in   5.046837s
+            osc-ruby     70.998k (± 3.1%) i/s -    355.888k in   5.017493s
 ```
 
 Benchmarks are now part of this repo - run `WITH_BENCHMARKS=1 rake test` to see the results for yourself.
 
-## Running the test suite
-
-```
-$ gem install minitest # or bundle install
-$ rake clean && rake clobber && rake compile && rake test
-```
-
 ## Still todo
 
-- [ ] Make a pure ruby fallback available
+- [x] Make a pure ruby fallback available
 - [x] Implement more types
 - [x] Bring benchmarks into the repo
 - [ ] Work out cross compilation story for easier packaging
@@ -118,6 +114,13 @@ $ rake clean && rake clobber && rake compile && rake test
 
     bundle install
     rake compile
+
+### Running the test suite
+
+```
+$ gem install minitest # or bundle install
+$ rake clean && rake clobber && rake compile && rake test && FAST_OSC_USE_FALLBACK=true rake test
+```
 
 https://gist.github.com/xavriley/507eff0a75d4552fa56e
 

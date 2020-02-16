@@ -2,7 +2,7 @@ require 'test_helper'
 require 'osc-ruby'
 require 'date'
 
-class FastOscTest < Minitest::Test
+module FastOscTesting
   def setup
     @path = "/thisisatest"
     @args = ["", 1, 2.0, "baz", "▁▃▅▇"]
@@ -234,10 +234,10 @@ class FastOscTest < Minitest::Test
     multiple_decoded = FastOsc.decode(@encoded_bundle)
     single_decoded = FastOsc.decode(@msg1)
 
-    timestamp1, msgs1 = multiple_decoded.first
+    _, msgs1 = multiple_decoded.first
     assert_equal msgs1.first.class, Array
 
-    timestamp2, msgs2 = single_decoded.first
+    _, msgs2 = single_decoded.first
     assert_equal msgs2.first.class, Array
   end
 
@@ -266,3 +266,15 @@ class FastOscTest < Minitest::Test
     assert_in_delta 2.75, Time.at(OSC::OSCPacket.messages_from_network(FastOsc.encode_single_bundle(1463234579.188746, "/foo", []), []).first.time - 2208988800) - start
   end
 end
+
+class FastOscExtTest < Minitest::Test
+  include FastOscTesting
+end
+
+# this doesn't work yet - for now run `rake test` with and without the env var
+# class FastOscPureTest < Minitest::Test
+#   ENV["FAST_OSC_USE_FALLBACK"] = "true"
+#   $LOAD_PATH.unshift File.expand_path('../../lib', __FILE__)
+#   load 'fast_osc.rb'
+#   include FastOscTesting
+# end
