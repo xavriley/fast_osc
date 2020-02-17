@@ -25,7 +25,7 @@ matrix:
   fast_finish: true
 
 test_script:
-  - bundle exec rake compile -rdevkit && bundle exec rake test
+  - bundle exec rake compile && bundle exec rake test
   # also test pure ruby fallback code
   - set FAST_OSC_USE_FALLBACK=true
   - bundle exec rake test

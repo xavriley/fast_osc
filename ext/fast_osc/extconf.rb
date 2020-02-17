@@ -1,5 +1,12 @@
 require 'mkmf'
 
+# optional require to make Windows builds easier
+begin
+  require 'devkit'
+rescue LoadError
+  # oh well...
+end
+
 LIBDIR     = RbConfig::CONFIG['libdir']
 INCLUDEDIR = RbConfig::CONFIG['includedir']
 
