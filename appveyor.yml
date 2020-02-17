@@ -1,0 +1,14 @@
+# appveyor.yml
+install:
+  - set PATH=C:\Ruby26\bin;%PATH%
+  - bundle install
+
+build: off
+
+before_test:
+  - ruby -v
+  - gem -v
+  - bundle -v
+
+test_script:
+  - bundle exec rake -rdevkit compile && bundle exec rake test && cmd /V /C "set FAST_OSC_USE_FALLBACK=true && rake test"
