@@ -1,4 +1,6 @@
 # appveyor.yml
+image: Visual Studio 2019
+
 install:
   - set PATH=C:\Ruby26\bin;%PATH%
   - bundle install
@@ -10,5 +12,18 @@ before_test:
   - gem -v
   - bundle -v
 
+platform:
+  - x64
+
+environment:
+  MSBUILD_FLAGS: /verbosity:minimal /maxcpucount
+  matrix:
+    - generator: "Visual Studio 16 2019"
+
+matrix:
+  fast_finish: true
+
 test_script:
-  - bundle exec rake -rdevkit compile && bundle exec rake test && cmd /V /C "set FAST_OSC_USE_FALLBACK=true && rake test"
+  - bundle exec rake compile && bundle exec rake test
+  # test pure ruby fallback code
+  - cmd /V /C "set FAST_OSC_USE_FALLBACK=true" && bundle exec rake test
